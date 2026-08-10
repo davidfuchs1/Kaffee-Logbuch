@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kaffee-Logbuch</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kaffeebuch">
+<meta name="theme-color" content="#1B1512">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1B1512;
+    --surface:#241C17;
+    --surface-2:#2E241E;
+    --border:#3B2E26;
+    --text:#F2E9DD;
+    --text-secondary:#B3A093;
+    --text-muted:#7C6A5E;
+    --gold:#D4A24C;
+    --gold-soft:rgba(212,162,76,0.14);
+    --gold-dim:#8A6B37;
+    --danger:#B85C4A;
+    --danger-soft:rgba(184,92,74,0.14);
+    --radius:16px;
+    --radius-sm:10px;
+    --font-display:'Fraunces',serif;
+    --font-body:'Inter',sans-serif;
+    --font-mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    min-height:100vh;
+    padding-bottom:96px;
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:0 18px;}
+
+  header.top{
+    padding:28px 18px 18px;
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+  }
+  header.top .titles h1{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:28px;
+    letter-spacing:-0.01em;
+    margin:0 0 2px;
+  }
+  header.top .titles p{
+    margin:0;
+    color:var(--text-muted);
+    font-size:13px;
+  }
+  .icon-btns{display:flex;gap:8px;flex-shrink:0;padding-top:4px;}
+  .icon-btn{
+    width:34px;height:34px;border-radius:50%;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text-secondary);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+  }
+  .icon-btn:active{background:var(--surface-2);}
+  .icon-btn svg{width:16px;height:16px;}
+
+  .toolbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 18px 14px;
+    gap:10px;
+  }
+  .count{font-size:12px;color:var(--text-muted);font-family:var(--font-mono);}
+  .sort{display:flex;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:3px;}
+  .sort button{
+    border:none;background:transparent;color:var(--text-muted);
+    font-family:var(--font-body);font-size:12px;font-weight:500;
+    padding:6px 12px;border-radius:999px;cursor:pointer;
+  }
+  .sort button.active{background:var(--gold-soft);color:var(--gold);}
+
+  .list{padding:0 18px;display:flex;flex-direction:column;gap:12px;}
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:16px 16px 14px;
+    cursor:pointer;
+    transition:transform .12s ease, border-color .12s ease;
+  }
+  .card:active{transform:scale(0.985);border-color:var(--gold-dim);}
+  .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .card-eyebrow{
+    font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--text-muted);margin:0 0 3px;
+  }
+  .card-name{
+    font-family:var(--font-display);font-weight:600;font-size:19px;
+    margin:0;line-height:1.2;
+  }
+  .beans{display:flex;gap:3px;flex-shrink:0;padding-top:2px;}
+  .beans svg{width:16px;height:16px;}
+  .lobe-fill{fill:var(--gold);stroke:none;}
+  .lobe-empty{fill:none;stroke:var(--text-muted);stroke-width:0.55;}
+
+  .card-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px;}
+  .badge{
+    font-family:var(--font-mono);font-size:12px;
+    background:var(--surface-2);color:var(--text-secondary);
+    border-radius:999px;padding:4px 10px;
+    display:flex;align-items:center;gap:5px;
+  }
+  .badge.ratio{background:var(--gold-soft);color:var(--gold);}
+  .badge .lbl{font-family:var(--font-body);color:var(--text-muted);font-size:11px;}
+
+  .card-notes{
+    margin:10px 0 0;color:var(--text-secondary);font-size:13px;line-height:1.5;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+
+  .empty{
+    text-align:center;padding:60px 24px;color:var(--text-muted);
+  }
+  .empty svg{width:44px;height:44px;margin-bottom:14px;opacity:.5;}
+  .empty p{font-size:14px;margin:0 0 4px;}
+  .empty .sub{font-size:12px;color:var(--text-muted);opacity:.8;}
+
+  .fab{
+    position:fixed;right:22px;bottom:28px;
+    width:56px;height:56px;border-radius:50%;
+    background:var(--gold);color:var(--bg);
+    border:none;box-shadow:0 6px 18px rgba(0,0,0,0.35);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;z-index:20;
+  }
+  .fab svg{width:24px;height:24px;}
+  .fab:active{transform:scale(0.94);}
+
+  .overlay{
+    position:fixed;inset:0;background:rgba(10,7,5,0.6);
+    display:none;align-items:flex-end;justify-content:center;
+    z-index:30;
+  }
+  .overlay.open{display:flex;}
+  .sheet{
+    background:var(--bg);
+    width:100%;max-width:520px;
+    max-height:92vh;overflow-y:auto;
+    border-radius:22px 22px 0 0;
+    border:1px solid var(--border);border-bottom:none;
+    padding:20px 20px calc(24px + env(safe-area-inset-bottom));
+  }
+  .sheet-handle{width:36px;height:4px;background:var(--border);border-radius:99px;margin:0 auto 16px;}
+  .sheet h2{font-family:var(--font-display);font-weight:600;font-size:21px;margin:0 0 18px;}
+
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px;letter-spacing:.02em;}
+  .field input[type=text], .field textarea{
+    width:100%;background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius-sm);padding:11px 12px;color:var(--text);
+    font-family:var(--font-body);font-size:15px;
+  }
+  .field textarea{min-height:64px;resize:vertical;font-family:var(--font-body);}
+  .field input:focus, .field textarea:focus{outline:none;border-color:var(--gold-dim);}
+
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  input[type=number]{-moz-appearance:textfield;appearance:textfield;}
+
+  .stepper{
+    display:flex;align-items:center;gap:4px;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius-sm);padding:4px;
+  }
+  .step-btn{
+    width:32px;height:32px;flex-shrink:0;
+    border:none;border-radius:8px;
+    background:var(--surface-2);color:var(--gold);
+    font-family:var(--font-mono);font-size:17px;line-height:1;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+  }
+  .step-btn:hover{background:var(--gold-soft);}
+  .step-btn:active{background:var(--gold-soft);transform:scale(0.94);}
+  .step-value{flex:1;display:flex;flex-direction:column;align-items:center;min-width:0;}
+  .step-value input{
+    width:100%;text-align:center;background:transparent;border:none;
+    color:var(--text);font-family:var(--font-mono);font-size:16px;padding:2px 0 0;
+  }
+  .step-value input:focus{outline:none;}
+  .step-unit{font-size:10px;color:var(--text-muted);font-family:var(--font-body);margin-top:1px;}
+
+  .ratio-live{
+    font-family:var(--font-mono);color:var(--gold);font-size:13px;
+    margin-top:8px;text-align:right;
+  }
+
+  .grind-wrap input[type=range]{width:100%;accent-color:var(--gold);}
+  .grind-label{
+    text-align:center;font-family:var(--font-mono);color:var(--gold);
+    font-size:13px;margin-top:4px;
+  }
+
+  .bean-picker{display:flex;gap:6px;padding:4px 0;}
+  .bean-picker button{background:none;border:none;padding:3px;cursor:pointer;}
+  .bean-picker svg{width:30px;height:30px;display:block;}
+  .bean-rating-label{
+    font-family:var(--font-mono);color:var(--gold);font-size:13px;
+    margin-top:2px;
+  }
+
+  .warn{
+    background:var(--danger-soft);color:var(--danger);
+    font-size:12.5px;line-height:1.4;padding:10px 12px;
+    border-radius:var(--radius-sm);margin-bottom:14px;
+  }
+
+  .sheet-actions{display:flex;gap:10px;margin-top:22px;}
+  .btn{
+    flex:1;padding:13px;border-radius:999px;border:none;
+    font-family:var(--font-body);font-weight:600;font-size:14px;cursor:pointer;
+  }
+  .btn-primary{background:var(--gold);color:var(--bg);}
+  .btn-primary:active{opacity:.85;}
+  .btn-ghost{background:var(--surface);color:var(--text-secondary);border:1px solid var(--border);}
+  .btn-danger{background:var(--danger-soft);color:var(--danger);transition:background .15s, color .15s;}
+  .btn-danger.confirming{background:var(--danger);color:#fff;}
+
+  input[type=file]{display:none;}
+
+  .toast{
+    position:fixed;left:50%;bottom:100px;
+    transform:translateX(-50%) translateY(12px);
+    background:var(--surface-2);border:1px solid var(--border);
+    color:var(--text);padding:10px 18px;border-radius:999px;
+    font-size:13px;opacity:0;pointer-events:none;
+    transition:opacity .2s ease, transform .2s ease;
+    z-index:50;max-width:80%;text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="titles">
+      <h1>Kaffee-Logbuch</h1>
+      <p>dein privates Brüh-Protokoll</p>
+    </div>
+    <div class="icon-btns">
+      <button class="icon-btn" id="btnExport" title="Sichern (JSON exportieren)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+      </button>
+      <button class="icon-btn" id="btnImport" title="Wiederherstellen (JSON importieren)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M17 14l-5-5-5 5"/><path d="M5 3h14"/></svg>
+      </button>
+      <input type="file" id="fileImport" accept="application/json">
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <span class="count" id="countLbl">0 Einträge</span>
+    <div class="sort">
+      <button data-sort="date" class="active">Neueste</button>
+      <button data-sort="rating">Beste</button>
+    </div>
+  </div>
+
+  <div class="list" id="list"></div>
+</div>
+
+<button class="fab" id="btnAdd" aria-label="Neuen Kaffee eintragen">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h2 id="sheetTitle">Neuer Kaffee</h2>
+
+    <div class="warn" id="dupWarning" style="display:none;">Für diesen Kaffee bei dieser Rösterei gibt es bereits ein Rezept. Jeder Kaffee kann pro Rösterei nur einmal angelegt werden.</div>
+
+    <div class="field">
+      <label for="fName">Kaffee</label>
+      <input type="text" id="fName" placeholder="z. B. Ethiopia Guji">
+    </div>
+    <div class="field">
+      <label for="fRoastery">Rösterei</label>
+      <input type="text" id="fRoastery" placeholder="z. B. Bonanza">
+    </div>
+
+    <div class="field">
+      <label>Gramm ein / Gramm aus</label>
+      <div class="row2">
+        <div class="stepper">
+          <button type="button" class="step-btn" data-target="fIn" data-step="-1" data-min="0">−</button>
+          <div class="step-value"><input type="number" id="fIn" inputmode="decimal" placeholder="18"><span class="step-unit">g ein</span></div>
+          <button type="button" class="step-btn" data-target="fIn" data-step="1" data-min="0">+</button>
+        </div>
+        <div class="stepper">
+          <button type="button" class="step-btn" data-target="fOut" data-step="-1" data-min="0">−</button>
+          <div class="step-value"><input type="number" id="fOut" inputmode="decimal" placeholder="40"><span class="step-unit">g aus</span></div>
+          <button type="button" class="step-btn" data-target="fOut" data-step="1" data-min="0">+</button>
+        </div>
+      </div>
+      <div class="ratio-live" id="ratioLive">Verhältnis 1 : —</div>
+    </div>
+
+    <div class="field">
+      <label>Brühzeit (Sekunden)</label>
+      <div class="stepper">
+        <button type="button" class="step-btn" data-target="fSec" data-step="-1" data-min="0">−</button>
+        <div class="step-value"><input type="number" id="fSec" inputmode="numeric" placeholder="25"><span class="step-unit">Sekunden</span></div>
+        <button type="button" class="step-btn" data-target="fSec" data-step="1" data-min="0">+</button>
+      </div>
+    </div>
+
+    <div class="field grind-wrap">
+      <label>Mahlgrad</label>
+      <input type="range" id="fGrind" min="-1" max="20" step="0.1" value="10">
+      <div class="grind-label" id="grindLbl">10,0</div>
+    </div>
+
+    <div class="field">
+      <label>Bewertung</label>
+      <div class="bean-picker" id="beanPicker"></div>
+      <div class="bean-rating-label" id="ratingLbl">Noch keine Bewertung</div>
+    </div>
+
+    <div class="field">
+      <label for="fNotes">Bemerkungen</label>
+      <textarea id="fNotes" placeholder="Geschmack und besondere Merkmale"></textarea>
+    </div>
+
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" id="btnCancel">Abbrechen</button>
+      <button class="btn btn-primary" id="btnSave">Speichern</button>
+    </div>
+    <div class="sheet-actions" id="deleteRow" style="display:none;">
+      <button class="btn btn-danger" id="btnDelete">Eintrag löschen</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('service-worker.js').catch(function(){});
+  });
+}
+</script>
+<script>
+(function(){
+  var STORAGE_KEY = 'kaffee-logbuch-entries-v2';
+  var OLD_STORAGE_KEY = 'kaffee-logbuch-entries-v1';
+  var sortMode = 'date';
+  var editingIndex = -1; // -1 = neuer Eintrag
+  var currentRating = 0;
+  var deleteArmed = false;
+  var LEFT_LOBE_PATH = 'M12,3 C12.4,8 10.4,15 12,21 C8,20.5 5.5,17 5.5,12.5 C5.5,8 7,3.5 12,3 Z';
+  var RIGHT_LOBE_PATH = 'M12,3 C17,3.5 18.5,8 18.5,12.5 C18.5,17 16,20.5 12,21 C11.6,15 13.6,8 12,3 Z';
+
+  function loadEntries(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) return JSON.parse(raw);
+      // einmalige, stille Migration aus der alten Datenstruktur (mit id/brewMin/brewSec)
+      var oldRaw = localStorage.getItem(OLD_STORAGE_KEY);
+      if(oldRaw){
+        var oldEntries = JSON.parse(oldRaw);
+        var migrated = oldEntries.map(function(o){
+          return {
+            name: o.name || '',
+            roastery: o.roastery || '',
+            gramsIn: o.gramsIn || 0,
+            gramsOut: o.gramsOut || 0,
+            brewSeconds: o.brewSeconds != null ? o.brewSeconds : ((o.brewMin||0)*60 + (o.brewSec||0)),
+            grind: o.grind != null ? o.grind : 10,
+            rating: o.rating || 0,
+            notes: o.notes || '',
+            createdAt: o.createdAt || Date.now()
+          };
+        });
+        saveEntries(migrated);
+        return migrated;
+      }
+      return [];
+    }catch(e){ return []; }
+  }
+  function saveEntries(list){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  }
+  function normKey(s){ return (s||'').trim().toLowerCase().replace(/\s+/g,' '); }
+  function entryKey(e){ return normKey(e.name) + '||' + normKey(e.roastery); }
+
+  function escapeHtml(str){
+    return (str||'').replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function fmtRatio(gIn, gOut){
+    if(!gIn || !gOut) return '—';
+    var r = gOut / gIn;
+    return '1 : ' + r.toFixed(1).replace('.', ',');
+  }
+  function fmtDecimal(n){
+    n = (typeof n === 'number' && !isNaN(n)) ? n : 0;
+    return n.toFixed(1).replace('.', ',');
+  }
+  function fractionFor(rating, i){
+    var f = rating - (i-1);
+    if(f<0) f=0; if(f>1) f=1;
+    return f;
+  }
+  function beanSVG(fraction){
+    fraction = Math.max(0, Math.min(1, fraction));
+    var leftClass = fraction >= 0.5 ? 'lobe-fill' : 'lobe-empty';
+    var rightClass = fraction >= 1 ? 'lobe-fill' : 'lobe-empty';
+    return '<svg viewBox="0 0 24 24">'+
+      '<path class="'+leftClass+'" d="'+LEFT_LOBE_PATH+'"/>'+
+      '<path class="'+rightClass+'" d="'+RIGHT_LOBE_PATH+'"/>'+
+    '</svg>';
+  }
+  function beansRow(rating){
+    var html = '';
+    for(var i=1;i<=5;i++){ html += beanSVG(fractionFor(rating,i)); }
+    return html;
+  }
+
+  var listEl = document.getElementById('list');
+  var countLbl = document.getElementById('countLbl');
+
+  function render(){
+    var entries = loadEntries();
+    countLbl.textContent = entries.length + (entries.length===1 ? ' Eintrag' : ' Einträge');
+
+    if(entries.length === 0){
+      listEl.innerHTML = '<div class="empty">'+
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 8h13a3 3 0 010 6h-1"/><path d="M4 8v7a3 3 0 003 3h6a3 3 0 003-3V8"/><path d="M8 2c0 1-1 1-1 2s1 1 1 2"/><path d="M12 2c0 1-1 1-1 2s1 1 1 2"/></svg>'+
+        '<p>Noch kein Kaffee protokolliert.</p>'+
+        '<div class="sub">Tippe unten rechts auf + für den ersten Eintrag.</div>'+
+      '</div>';
+      return;
+    }
+
+    var sorted = entries.slice().sort(function(a,b){
+      if(sortMode === 'rating') return (b.rating||0) - (a.rating||0);
+      return (b.createdAt||0) - (a.createdAt||0);
+    });
+
+    listEl.innerHTML = sorted.map(function(e){
+      var notesHtml = e.notes ? '<p class="card-notes">'+escapeHtml(e.notes)+'</p>' : '';
+      var grindVal = e.grind!=null ? e.grind : 10;
+      return '<div class="card" data-name="'+escapeHtml(e.name)+'" data-roastery="'+escapeHtml(e.roastery)+'">'+
+        '<div class="card-top">'+
+          '<div>'+
+            '<p class="card-eyebrow">'+escapeHtml(e.roastery||'Rösterei unbekannt')+'</p>'+
+            '<h3 class="card-name">'+escapeHtml(e.name||'Ohne Namen')+'</h3>'+
+          '</div>'+
+          '<div class="beans">'+beansRow(e.rating||0)+'</div>'+
+        '</div>'+
+        '<div class="card-meta">'+
+          '<span class="badge ratio">'+fmtRatio(e.gramsIn,e.gramsOut)+'</span>'+
+          '<span class="badge">'+(e.gramsIn||'–')+'g <span class="lbl">→</span> '+(e.gramsOut||'–')+'g</span>'+
+          '<span class="badge">'+(e.brewSeconds||0)+' <span class="lbl">Sek</span></span>'+
+          '<span class="badge">'+fmtDecimal(grindVal)+' <span class="lbl">Mahlgrad</span></span>'+
+        '</div>'+
+        notesHtml+
+      '</div>';
+    }).join('');
+  }
+
+  document.querySelectorAll('.sort button').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      sortMode = btn.dataset.sort;
+      document.querySelectorAll('.sort button').forEach(function(b){b.classList.remove('active');});
+      btn.classList.add('active');
+      render();
+    });
+  });
+
+  listEl.addEventListener('click', function(ev){
+    var card = ev.target.closest('.card');
+    if(!card) return;
+    var key = entryKey({name: card.dataset.name, roastery: card.dataset.roastery});
+    openSheet(key);
+  });
+
+  var overlay = document.getElementById('overlay');
+  var beanPicker = document.getElementById('beanPicker');
+  var ratingLbl = document.getElementById('ratingLbl');
+  var btnDelete = document.getElementById('btnDelete');
+  var dupWarning = document.getElementById('dupWarning');
+
+  function renderBeanPicker(){
+    beanPicker.innerHTML = '';
+    for(var i=1;i<=5;i++){
+      (function(i){
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.innerHTML = beanSVG(fractionFor(currentRating,i));
+        b.addEventListener('click', function(ev){
+          var rect = b.getBoundingClientRect();
+          var half = (ev.clientX - rect.left) < rect.width/2;
+          currentRating = half ? (i-0.5) : i;
+          renderBeanPicker();
+        });
+        beanPicker.appendChild(b);
+      })(i);
+    }
+    ratingLbl.textContent = currentRating>0 ? (fmtDecimal(currentRating)+' / 5') : 'Noch keine Bewertung';
+  }
+
+  function updateRatioLive(){
+    var gIn = parseFloat(document.getElementById('fIn').value);
+    var gOut = parseFloat(document.getElementById('fOut').value);
+    document.getElementById('ratioLive').textContent = 'Verhältnis ' + fmtRatio(gIn, gOut);
+  }
+  document.getElementById('fIn').addEventListener('input', updateRatioLive);
+  document.getElementById('fOut').addEventListener('input', updateRatioLive);
+
+  document.getElementById('fGrind').addEventListener('input', function(){
+    document.getElementById('grindLbl').textContent = fmtDecimal(parseFloat(this.value));
+  });
+
+  document.querySelectorAll('.step-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var target = document.getElementById(btn.dataset.target);
+      if(!target) return;
+      var step = parseFloat(btn.dataset.step);
+      var min = btn.dataset.min !== undefined ? parseFloat(btn.dataset.min) : -Infinity;
+      var cur = parseFloat(target.value);
+      if(isNaN(cur)) cur = 0;
+      var next = Math.round((cur + step) * 10) / 10;
+      if(next < min) next = min;
+      target.value = next;
+      target.dispatchEvent(new Event('input', {bubbles:true}));
+    });
+  });
+
+  function hideDupWarning(){ dupWarning.style.display = 'none'; }
+  document.getElementById('fName').addEventListener('input', hideDupWarning);
+  document.getElementById('fRoastery').addEventListener('input', hideDupWarning);
+
+  function resetDeleteButton(){
+    deleteArmed = false;
+    btnDelete.textContent = 'Eintrag löschen';
+    btnDelete.classList.remove('confirming');
+    clearTimeout(btnDelete._revertTimer);
+  }
+
+  function openSheet(key){
+    var entries = loadEntries();
+    var idx = key ? entries.findIndex(function(x){ return entryKey(x) === key; }) : -1;
+    editingIndex = idx;
+    var e = idx >= 0 ? entries[idx] : null;
+    resetDeleteButton();
+    hideDupWarning();
+
+    document.getElementById('sheetTitle').textContent = e ? 'Kaffee bearbeiten' : 'Neuer Kaffee';
+    document.getElementById('fName').value = e ? e.name : '';
+    document.getElementById('fRoastery').value = e ? e.roastery : '';
+    document.getElementById('fIn').value = e ? e.gramsIn : 18;
+    document.getElementById('fOut').value = e ? e.gramsOut : 40;
+    document.getElementById('fSec').value = e ? e.brewSeconds : 25;
+    var grindVal = e ? (e.grind!=null ? e.grind : 10) : 10;
+    document.getElementById('fGrind').value = grindVal;
+    document.getElementById('grindLbl').textContent = fmtDecimal(grindVal);
+    document.getElementById('fNotes').value = e ? e.notes : '';
+    currentRating = e ? (e.rating||0) : 0;
+    renderBeanPicker();
+    updateRatioLive();
+
+    document.getElementById('deleteRow').style.display = e ? 'flex' : 'none';
+    overlay.classList.add('open');
+  }
+  function closeSheet(){
+    overlay.classList.remove('open');
+    editingIndex = -1;
+    resetDeleteButton();
+  }
+
+  document.getElementById('btnAdd').addEventListener('click', function(){ openSheet(null); });
+  document.getElementById('btnCancel').addEventListener('click', closeSheet);
+  overlay.addEventListener('click', function(ev){ if(ev.target === overlay) closeSheet(); });
+
+  document.getElementById('btnSave').addEventListener('click', function(){
+    var name = document.getElementById('fName').value.trim();
+    if(!name){ document.getElementById('fName').focus(); return; }
+    var roastery = document.getElementById('fRoastery').value.trim();
+
+    var entries = loadEntries();
+    var newKey = entryKey({name:name, roastery:roastery});
+    var conflictIdx = entries.findIndex(function(x, i){
+      return entryKey(x) === newKey && i !== editingIndex;
+    });
+    if(conflictIdx !== -1){
+      dupWarning.style.display = 'block';
+      return;
+    }
+
+    var grindRaw = parseFloat(document.getElementById('fGrind').value);
+    var data = {
+      name: name,
+      roastery: roastery,
+      gramsIn: parseFloat(document.getElementById('fIn').value) || 0,
+      gramsOut: parseFloat(document.getElementById('fOut').value) || 0,
+      brewSeconds: parseInt(document.getElementById('fSec').value) || 0,
+      grind: isNaN(grindRaw) ? 10 : Math.round(grindRaw*10)/10,
+      rating: currentRating,
+      notes: document.getElementById('fNotes').value.trim(),
+      createdAt: editingIndex >= 0 ? entries[editingIndex].createdAt : Date.now()
+    };
+
+    if(editingIndex >= 0){
+      entries[editingIndex] = data;
+    } else {
+      entries.push(data);
+    }
+    saveEntries(entries);
+    closeSheet();
+    render();
+  });
+
+  btnDelete.addEventListener('click', function(){
+    if(editingIndex < 0) return;
+    if(!deleteArmed){
+      deleteArmed = true;
+      btnDelete.textContent = 'Wirklich löschen? Nochmal tippen';
+      btnDelete.classList.add('confirming');
+      clearTimeout(btnDelete._revertTimer);
+      btnDelete._revertTimer = setTimeout(resetDeleteButton, 3000);
+      return;
+    }
+    var entries = loadEntries();
+    entries.splice(editingIndex, 1);
+    saveEntries(entries);
+    closeSheet();
+    render();
+    showToast('Eintrag gelöscht.');
+  });
+
+  document.getElementById('btnExport').addEventListener('click', function(){
+    var entries = loadEntries();
+    var blob = new Blob([JSON.stringify(entries, null, 2)], {type:'application/json'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var stamp = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = 'kaffee-logbuch-backup-' + stamp + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Sicherung heruntergeladen.');
+  });
+
+  document.getElementById('btnImport').addEventListener('click', function(){
+    document.getElementById('fileImport').click();
+  });
+  document.getElementById('fileImport').addEventListener('change', function(ev){
+    var file = ev.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try{
+        var imported = JSON.parse(reader.result);
+        if(!Array.isArray(imported)) throw new Error('ungültiges Format');
+        var existing = loadEntries();
+        var existingKeys = {};
+        existing.forEach(function(x){ existingKeys[entryKey(x)] = true; });
+        var added = 0;
+        imported.forEach(function(item){
+          if(!item || !item.name) return;
+          var k = entryKey(item);
+          if(!existingKeys[k]){
+            existing.push({
+              name: item.name || '',
+              roastery: item.roastery || '',
+              gramsIn: item.gramsIn || 0,
+              gramsOut: item.gramsOut || 0,
+              brewSeconds: item.brewSeconds != null ? item.brewSeconds : ((item.brewMin||0)*60 + (item.brewSec||0)),
+              grind: item.grind != null ? item.grind : 10,
+              rating: item.rating || 0,
+              notes: item.notes || '',
+              createdAt: item.createdAt || Date.now()
+            });
+            existingKeys[k] = true;
+            added++;
+          }
+        });
+        saveEntries(existing);
+        render();
+        showToast(added + ' Einträge übernommen.');
+      }catch(err){
+        showToast('Datei konnte nicht gelesen werden.');
+      }
+      ev.target.value = '';
+    };
+    reader.readAsText(file);
+  });
+
+  var toastTimer;
+  function showToast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2400);
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

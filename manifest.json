@@ -1,0 +1,8 @@
+{
+  "name": "Kaffee-Logbuch",
+  "short_name": "Kaffeebuch",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1B1512",
+  "theme_color": "#1B1512"
+}
