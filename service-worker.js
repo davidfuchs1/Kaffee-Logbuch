@@ -1,5 +1,5 @@
-const CACHE_NAME = 'kaffee-logbuch-v1';
-const CORE_ASSETS = ['./', './index.html', './manifest.json'];
+const CACHE_NAME = 'kaffee-logbuch-v2';
+const CORE_ASSETS = ['./', './index.html', './manifest.json', './apple-touch-icon.png'];
 
 self.addEventListener('install', function(event){
   self.skipWaiting();
