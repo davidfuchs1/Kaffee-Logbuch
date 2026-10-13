@@ -12,7 +12,6 @@ const PFAD = new URL(self.registration.scope).pathname;
 const PRAEFIX = `kaffee|${PFAD}|`;
 const CACHE = PRAEFIX + VERSION;
 const CACHE_ERSTE_VERSION = 'kaffee-logbuch-v2';
-const IST_VORSCHAU = PFAD.endsWith('/vorschau/');
 
 const OBERFLAECHE = [
   './',
@@ -38,7 +37,7 @@ self.addEventListener('install', (ev) => {
 
 self.addEventListener('activate', (ev) => {
   const veraltet = (name) =>
-    (name.startsWith(PRAEFIX) && name !== CACHE) || (name === CACHE_ERSTE_VERSION && !IST_VORSCHAU);
+    (name.startsWith(PRAEFIX) && name !== CACHE) || name === CACHE_ERSTE_VERSION;
   ev.waitUntil(
     caches.keys()
       .then((namen) => Promise.all(namen.filter(veraltet).map((n) => caches.delete(n))))

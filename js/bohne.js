@@ -1,17 +1,22 @@
-// Bohnen-Symbol der Bewertung. Vom Nutzer am 13.10.2026 abgenommen – nicht ohne Rückfrage ändern.
+// Bohnen-Symbol der Bewertung. Vom Nutzer abgenommen (Form 13.10.2026, Enden 14.10.2026) –
+// nicht ohne Rückfrage ändern. Das App-Icon verwendet dieselben Pfade.
 //
-// ViewBox 0 0 24 24, um 20° gekippt. Zwei Hälften, die sich an beiden Spitzen
+// ViewBox 0 0 24 24, um 20° gekippt. Zwei Hälften, die sich an beiden Enden
 // berühren; dazwischen die dunkle Lücke (in der Mitte 1,3 breit, an den Enden
-// spitz: beide Kanten verlassen die Spitze in derselben Richtung).
+// spitz: beide Kanten verlassen den Scheitel in derselben Richtung).
+// Die Außenform ist ein glattes Oval: Die Kanten liefen früher mit einem Knick
+// (oben 11,4°, unten 14,3°) in einer Spitze zusammen, die als Zipfel herausstand.
+// Nur die letzten 1,2 Einheiten links und rechts davon sind durch einen Bogen
+// ersetzt; der Rest der Rundung ist unverändert (14.10.2026 abgenommen).
 // Voll, halb und leer sind exakt gleich groß und haben dieselbe Lücke:
 //   gefüllte Hälfte = Fläche ohne Strich
 //   leere Hälfte    = Kontur nach innen, außen 0,6 und entlang der Lücke 0,3
 // „Nach innen“ heißt: doppelte Strichstärke, auf die eigene Hälfte beschnitten.
 import { fractionFor } from './daten.js';
 
-var LEFT = 'M12,3 C13.58,6.95 9.18,13.95 12,21 C8,20.5 5.5,17 5.5,12.5 C5.5,8 7,3.5 12,3 Z';
-var RIGHT = 'M12,3 C14.82,10.05 10.42,17.05 12,21 C16,20.5 18.5,17 18.5,12.5 C18.5,8 17,3.5 12,3 Z';
-var OUTER = 'M12,3 C17,3.5 18.5,8 18.5,12.5 C18.5,17 16,20.5 12,21 C8,20.5 5.5,17 5.5,12.5 C5.5,8 7,3.5 12,3 Z';
+var LEFT = 'M12,3.058 C13.58,7.007 9.18,13.874 12,20.925 C11.596,20.925 11.191,20.866 10.8,20.748 C7.506,19.76 5.5,16.531 5.5,12.5 C5.5,8.382 6.756,4.265 10.8,3.212 C11.193,3.109 11.597,3.058 12,3.058 Z';
+var RIGHT = 'M12,3.058 C14.82,10.109 10.42,16.976 12,20.925 C12.404,20.925 12.809,20.866 13.2,20.748 C16.494,19.76 18.5,16.531 18.5,12.5 C18.5,8.382 17.244,4.265 13.2,3.212 C12.807,3.109 12.403,3.058 12,3.058 Z';
+var OUTER = 'M12,3.058 C12.403,3.058 12.807,3.109 13.2,3.212 C17.244,4.265 18.5,8.382 18.5,12.5 C18.5,16.531 16.494,19.76 13.2,20.748 C12.809,20.866 12.404,20.925 12,20.925 C11.596,20.925 11.191,20.866 10.8,20.748 C7.506,19.76 5.5,16.531 5.5,12.5 C5.5,8.382 6.756,4.265 10.8,3.212 C11.193,3.109 11.597,3.058 12,3.058 Z';
 
 function emptyHalf(side, d){
   return '<clipPath id="bohne-clip-'+side+'"><path d="'+d+'"/></clipPath>'+

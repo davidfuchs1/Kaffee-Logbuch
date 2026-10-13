@@ -16,9 +16,6 @@ Alte Speicher-Keys werden nie verändert oder gelöscht.
 | `localStorage` · `kaffee-logbuch-entries-v2`, `-v1` | alte Stände, bleiben als Rückweg liegen |
 | `localStorage` · `kaffee-logbuch-v3-defekt` | unlesbarer Stand v3, falls einer gefunden wurde |
 
-Die Vorschau unter `vorschau/` hängt an alle eigenen Namen `-vorschau` an, damit ihre
-Testdaten getrennt bleiben.
-
 Alles liegt nur auf dem Gerät. Die Home-Bildschirm-App hat einen eigenen Speicher,
 getrennt von Safari.
 
