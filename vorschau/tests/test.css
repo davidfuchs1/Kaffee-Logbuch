@@ -1,9 +1,0 @@
-body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif;padding:18px;margin:0;}
-h1{font-size:20px;margin:0 0 6px;}
-#summe{color:var(--text-secondary);margin:0 0 14px;}
-body.gruen #summe{color:#8FBF7A;}
-body.rot #summe{color:var(--danger);}
-ul{list-style:none;padding:0;margin:0;font-size:14px;line-height:1.7;}
-li.ok{color:var(--text-secondary);}
-li.skip{color:var(--text-muted);}
-li.fehler{color:var(--danger);}
