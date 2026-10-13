@@ -165,25 +165,38 @@ export function buildBackup(state, photos){
   };
 }
 
-// Import führt zusammen: vorhandene Name+Rösterei-Kombinationen werden übersprungen.
-// Liest Listen (v1/v2) und Sicherungen v3. Verändert state nicht.
-// newPhotos: Fotos aus der Datei, die zu übernommenen Einträgen gehören.
-export function mergeImport(state, data){
+// Import führt zusammen. Liest Listen (v1/v2) und Sicherungen v3. Verändert state nicht.
+// - Neue Name+Rösterei-Kombinationen werden übernommen (added).
+// - Vorhandene bleiben, wie sie sind. Nur was ihnen fehlt, wird ergänzt (filled):
+//   ein Foto, wenn sie keins haben, und Geschmacksnoten, wenn sie keine haben.
+// - Der Rest wird übersprungen (skipped).
+// newPhotos: Fotos aus der Datei, die übernommen werden.
+export function mergeImport(state, data, now){
   var incoming = toState(data);
   var photos = (data && !Array.isArray(data) && data.photos && typeof data.photos === 'object') ? data.photos : {};
   var entries = state.entries.slice();
-  var keys = {}, ids = {};
-  entries.forEach(function(e){ keys[entryKey(e)] = true; ids[e.id] = true; });
-  var added = 0, skipped = 0, newPhotos = {};
+  var at = {}, ids = {};
+  entries.forEach(function(e, i){ at[entryKey(e)] = i; ids[e.id] = true; });
+  var added = 0, filled = 0, skipped = 0, newPhotos = {};
   incoming.entries.forEach(function(e){
     if(!e.name) return;
     var k = entryKey(e);
-    if(keys[k]){ skipped++; return; }
+    var hasPhoto = !!e.photo && typeof photos[e.photo] === 'string';
+    if(k in at){
+      var cur = entries[at[k]], patch = {};
+      if(!cur.photo && hasPhoto){ patch.photo = e.photo; newPhotos[e.photo] = photos[e.photo]; }
+      if(!cur.flavors.length && e.flavors.length) patch.flavors = e.flavors;
+      if(patch.photo || patch.flavors){
+        patch.updatedAt = now || Date.now();
+        entries[at[k]] = Object.assign({}, cur, patch);
+        filled++;
+      } else skipped++;
+      return;
+    }
     e.id = uniqueId(e.id, ids);
-    if(e.photo && typeof photos[e.photo] === 'string') newPhotos[e.photo] = photos[e.photo];
+    if(hasPhoto) newPhotos[e.photo] = photos[e.photo];
     else e.photo = null;
-    entries.push(e);
-    keys[k] = true;
+    at[k] = entries.push(e) - 1;
     added++;
   });
   return {
@@ -193,6 +206,7 @@ export function mergeImport(state, data){
       entries: entries
     },
     added: added,
+    filled: filled,
     skipped: skipped,
     newPhotos: newPhotos
   };
