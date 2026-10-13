@@ -1,0 +1,15 @@
+/* Alle Farbwerte der App. Farben ausschließlich hier ändern. */
+:root{
+  --bg:#1B1512;
+  --surface:#241C17;
+  --surface-2:#2E241E;
+  --border:#3B2E26;
+  --text:#F2E9DD;
+  --text-secondary:#B3A093;
+  --text-muted:#7C6A5E;
+  --gold:#D4A24C;
+  --gold-soft:rgba(212,162,76,0.14);
+  --gold-dim:#8A6B37;
+  --danger:#B85C4A;
+  --danger-soft:rgba(184,92,74,0.14);
+}
