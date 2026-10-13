@@ -558,6 +558,11 @@ function showToast(msg){
 
 // ---------- Start ----------
 
+// Weiche Kante unter der Oberkante nur zeigen, wenn Inhalt darunter durchläuft
+window.addEventListener('scroll', function(){
+  document.body.classList.toggle('gescrollt', window.scrollY > 4);
+}, {passive: true});
+
 render();
 updateBackupUi();
 if(IS_PREVIEW) document.querySelector('header.top .titles p').textContent = 'Vorschau – nur zum Testen';

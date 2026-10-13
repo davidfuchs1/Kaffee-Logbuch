@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Kaffee-Logbuch</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- Deckende Statusleiste („default“): Bei „black-translucent“ legt iOS ab Version 26 einen
+     Unschärfe-Verlauf über den oberen Inhalt. iOS liest die Angabe nur beim Hinzufügen zum
+     Home-Bildschirm: Nach einer Änderung muss die App gelöscht und neu hinzugefügt werden. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Kaffeebuch">
 <meta name="theme-color" content="#1B1512">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' blob: data:; object-src 'none'; base-uri 'none'; form-action 'none'">
@@ -15,6 +18,7 @@
 <link rel="stylesheet" href="stil.css">
 </head>
 <body>
+<div class="oberkante" aria-hidden="true"></div>
 
 <div class="wrap">
   <header class="top">

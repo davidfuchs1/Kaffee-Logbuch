@@ -46,6 +46,13 @@ python3 tools/server.py   # dann http://localhost:8765/tests/test.html
 ```
 Vor jedem Commit: Tests grün, App bei 375 px Breite angesehen.
 
+## iOS (nicht zurückbauen)
+- Statusleiste `default`, nicht `black-translucent`: sonst legt iOS 26/27 einen Unschärfe-Verlauf
+  über den oberen Rand. Die Angabe wird nur beim Hinzufügen zum Home-Bildschirm gelesen.
+- `.oberkante`: deckende, haftende Fläche ganz oben in der Hintergrundfarbe, ohne Transparenz.
+  Keine anderen festen Flächen an der Oberkante; die Blätter beginnen darunter.
+- Textfelder mindestens 16 px, sonst zoomt iOS beim Antippen.
+
 ## Design
 Dunkles Kaffee-Farbschema mit Gold. Das Bohnen-Symbol ist vom Nutzer in mehreren
 Runden abgenommen (Maße in `js/bohne.js`) – **nicht ohne Rückfrage ändern**.
