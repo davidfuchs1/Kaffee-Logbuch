@@ -1,11 +1,17 @@
 // Gerätespeicher: Einträge liegen im localStorage, nur auf diesem Gerät.
 import { toState, emptyState } from './daten.js';
 
-export var KEY_V3 = 'kaffee-logbuch-v3';
+// Die Vorschau (Unterordner vorschau/) liegt auf derselben Herkunft wie die echte
+// App. Sie schreibt deshalb unter eigenen Namen, damit ihre Testdaten nie in der
+// echten App auftauchen. Die alten Stände liest sie mit, verändert sie aber nicht.
+export var IS_PREVIEW = typeof location !== 'undefined' && location.pathname.indexOf('/vorschau/') !== -1;
+var SUFFIX = IS_PREVIEW ? '-vorschau' : '';
+
+export var KEY_V3 = 'kaffee-logbuch-v3' + SUFFIX;
 export var KEY_V2 = 'kaffee-logbuch-entries-v2';
 export var KEY_V1 = 'kaffee-logbuch-entries-v1';
-export var KEY_META = 'kaffee-logbuch-meta';
-var KEY_DEFEKT = 'kaffee-logbuch-v3-defekt';
+export var KEY_META = 'kaffee-logbuch-meta' + SUFFIX;
+export var KEY_DEFEKT = 'kaffee-logbuch-v3-defekt' + SUFFIX;
 
 function parse(raw){
   try{ return toState(JSON.parse(raw)); }catch(e){ return null; }
@@ -128,4 +134,4 @@ export function photoStore(dbName){
   };
 }
 
-export var photos = photoStore('kaffee-logbuch');
+export var photos = photoStore('kaffee-logbuch' + SUFFIX);

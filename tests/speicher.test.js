@@ -1,5 +1,5 @@
 import { test, gleich, wahr } from './mini.js';
-import { loadState, saveState, loadMeta, saveMeta, KEY_V1, KEY_V2, KEY_V3 } from '../js/speicher.js';
+import { loadState, saveState, loadMeta, saveMeta, KEY_V1, KEY_V2, KEY_V3, KEY_DEFEKT } from '../js/speicher.js';
 import { toState } from '../js/daten.js';
 
 // Nachgestellter localStorage, damit die Tests die echten Daten nicht berühren
@@ -57,7 +57,7 @@ test('loadState: unlesbarer Stand v3 wird beiseitegelegt, nicht überschrieben',
   var r = loadState(s);
   gleich(r.hinweis, 'defekt');
   gleich(r.state.entries.length, 2, 'Rückfall auf v2');
-  gleich(s.daten['kaffee-logbuch-v3-defekt'], '{kaputt');
+  gleich(s.daten[KEY_DEFEKT], '{kaputt');
 });
 test('saveState + loadState: Hin- und Rückweg', function(){
   var s = speicher({});

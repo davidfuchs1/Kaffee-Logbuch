@@ -42,7 +42,7 @@ Statische Seite ohne Build-Schritt. Aufbau und Regeln stehen in `CLAUDE.md`, das
 Datenformat in `docs/datenformat.md`.
 
 ```bash
-python3 -m http.server 8765 --bind 127.0.0.1
+python3 tools/server.py
 ```
 
 Danach http://localhost:8765/ für die App und http://localhost:8765/tests/test.html

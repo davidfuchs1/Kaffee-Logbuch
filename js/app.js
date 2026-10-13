@@ -4,7 +4,7 @@ import {
   flavorChoices, addCustomFlavor, buildBackup, mergeImport,
   backupStatus, backupDue, countChange, backupDone
 } from './daten.js';
-import { loadState, saveState, loadMeta, saveMeta, photos } from './speicher.js';
+import { loadState, saveState, loadMeta, saveMeta, photos, IS_PREVIEW } from './speicher.js';
 import { beanDefs, beanSVG, beansRow } from './bohne.js';
 import { photoFromFile, photoFromDataUrl, blobToDataUrl } from './bilder.js';
 import { swipeToClose } from './ziehen.js';
@@ -573,6 +573,7 @@ function showToast(msg){
 
 render();
 updateBackupUi();
+if(IS_PREVIEW) document.querySelector('header.top .titles p').textContent = 'Vorschau – nur zum Testen';
 if(loaded.hinweis === 'defekt') showToast('Gespeicherter Stand war unlesbar. Ältere Daten wurden geladen.');
 
 photos.thumbs().then(function(list){

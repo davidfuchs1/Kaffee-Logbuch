@@ -42,7 +42,7 @@ ausschließlich im Gerätespeicher des Nutzers, nie im Repo.
 
 ## Testen
 ```bash
-python3 -m http.server 8765 --bind 127.0.0.1   # dann http://localhost:8765/tests/test.html
+python3 tools/server.py   # dann http://localhost:8765/tests/test.html
 ```
 Vor jedem Commit: Tests grün, App bei 375 px Breite angesehen.
 
