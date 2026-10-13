@@ -61,7 +61,7 @@ test('loadState: unlesbarer Stand v3 wird beiseitegelegt, nicht überschrieben',
 });
 test('saveState + loadState: Hin- und Rückweg', function(){
   var s = speicher({});
-  var z = toState(V2); z.customFlavors = ['Marzipan']; z.entries[0].flavors = ['Floral'];
+  var z = toState(V2); z.entries[0].flavors = ['Floral', 'Marzipan'];
   saveState(z, s);
   gleich(loadState(s).state, z);
 });

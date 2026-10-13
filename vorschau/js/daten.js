@@ -83,7 +83,7 @@ export function toV3Entry(o){
 }
 
 export function emptyState(){
-  return {formatVersion: FORMAT_VERSION, customFlavors: [], entries: []};
+  return {formatVersion: FORMAT_VERSION, entries: []};
 }
 
 function uniqueId(id, taken){
@@ -96,9 +96,9 @@ function uniqueId(id, taken){
 // Speicherstand oder Backup-Inhalt in jedem bisherigen Format -> Zustand v3.
 // Liste = v1/v2, Objekt mit entries = v3.
 export function toState(data){
-  var list, flavors = [];
+  var list;
   if(Array.isArray(data)) list = data;
-  else if(data && Array.isArray(data.entries)){ list = data.entries; flavors = data.customFlavors; }
+  else if(data && Array.isArray(data.entries)) list = data.entries;
   else throw new Error('ungültiges Format');
   var taken = {};
   var entries = list.filter(function(x){ return x && typeof x === 'object'; }).map(function(x){
@@ -106,7 +106,7 @@ export function toState(data){
     e.id = uniqueId(e.id, taken);
     return e;
   });
-  return {formatVersion: FORMAT_VERSION, customFlavors: cleanFlavors(flavors), entries: entries};
+  return {formatVersion: FORMAT_VERSION, entries: entries};
 }
 
 export function sortEntries(entries, mode){
@@ -127,25 +127,19 @@ export function findDuplicate(entries, name, roastery, exceptId){
 
 // ---------- Geschmacksnoten ----------
 
-// Auswahl im Formular: Standard, dann eigene, dann was nur an diesem Eintrag hängt
-export function flavorChoices(state, entryFlavors){
-  return cleanFlavors(STANDARD_FLAVORS.concat(state.customFlavors, entryFlavors || []));
+// Eigene Noten gehören nur zu dem Kaffee, an dem sie eingegeben wurden. Es gibt
+// keine gemerkte Liste: Zur Auswahl stehen die Standardnoten und zusätzlich, was
+// an diesem Kaffee schon steht oder gerade eingegeben wurde (extra).
+export function flavorChoices(extra){
+  return cleanFlavors(STANDARD_FLAVORS.concat(extra || []));
 }
 
-export function isStandardFlavor(name){
-  var k = cleanFlavor(name).toLowerCase();
-  return STANDARD_FLAVORS.some(function(s){ return s.toLowerCase() === k; });
-}
-
-// Merkt eine eigene Note. Liefert die gültige Schreibweise (vorhandene gewinnt) oder '' bei leerer Eingabe.
-export function addCustomFlavor(state, name){
-  var f = cleanFlavor(name);
+// Eingabe -> gültige Schreibweise: Gibt es die Note in der Auswahl schon (Groß-/Kleinschreibung
+// egal), gewinnt die vorhandene. Leere Eingabe ergibt ''.
+export function matchFlavor(name, choices){
+  var f = cleanFlavor(name), k = f.toLowerCase();
   if(!f) return '';
-  var k = f.toLowerCase();
-  var known = STANDARD_FLAVORS.concat(state.customFlavors).filter(function(s){ return s.toLowerCase() === k; })[0];
-  if(known) return known;
-  state.customFlavors.push(f);
-  return f;
+  return choices.filter(function(s){ return s.toLowerCase() === k; })[0] || f;
 }
 
 // ---------- Sicherung ----------
@@ -159,7 +153,6 @@ export function buildBackup(state, photos){
   return {
     formatVersion: FORMAT_VERSION,
     exportedAt: Date.now(),
-    customFlavors: state.customFlavors.slice(),
     entries: state.entries.map(function(e){ return Object.assign({}, e); }),
     photos: used
   };
@@ -200,11 +193,7 @@ export function mergeImport(state, data, now){
     added++;
   });
   return {
-    state: {
-      formatVersion: FORMAT_VERSION,
-      customFlavors: cleanFlavors(state.customFlavors.concat(incoming.customFlavors)),
-      entries: entries
-    },
+    state: {formatVersion: FORMAT_VERSION, entries: entries},
     added: added,
     filled: filled,
     skipped: skipped,
