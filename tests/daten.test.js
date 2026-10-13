@@ -154,10 +154,42 @@ test('mergeImport: überspringt vorhandene Name+Rösterei, verändert den alten 
   gleich(r.state.entries[0].rating, 4, 'vorhandener Eintrag bleibt');
   gleich(JSON.stringify(s), vorher);
 });
-test('mergeImport: Foto eines übersprungenen Eintrags wird nicht übernommen', function(){
+test('mergeImport: vorhandener Eintrag ohne Foto und Noten wird ergänzt, sonst nichts geändert', function(){
   var s = toState([SOMMER]);
-  var datei = buildBackup(toState([Object.assign({}, SOMMER, {photo:'f-x'})]), {'f-x':'data:image/jpeg;base64,AAAA'});
-  gleich(mergeImport(s, datei).newPhotos, {});
+  var vorher = JSON.stringify(s);
+  var reich = Object.assign({}, SOMMER, {photo:'f-x', flavors:['Erdbeershake','Schoko'], rating:1, notes:'anders', grind:9});
+  var datei = buildBackup(toState([reich]), {'f-x':'data:image/jpeg;base64,AAAA'});
+  var r = mergeImport(s, datei, 5000);
+  gleich([r.added, r.filled, r.skipped], [0, 1, 0]);
+  gleich(r.newPhotos, {'f-x':'data:image/jpeg;base64,AAAA'});
+  var e = r.state.entries[0];
+  gleich(e.photo, 'f-x');
+  gleich(e.flavors, ['Erdbeershake','Schoko']);
+  gleich(e.updatedAt, 5000);
+  gleich([e.rating, e.notes, e.grind, e.id], [4, SOMMER.notes, 2.9, s.entries[0].id], 'eigene Werte bleiben');
+  gleich(JSON.stringify(s), vorher, 'alter Stand unverändert');
+});
+test('mergeImport: vorhandenes Foto und vorhandene Noten werden nie überschrieben', function(){
+  var s = toState([Object.assign({}, SOMMER, {photo:'f-eigen', flavors:['Floral']})]);
+  var datei = buildBackup(toState([Object.assign({}, SOMMER, {photo:'f-x', flavors:['Schoko']})]), {'f-x':'data:image/jpeg;base64,AAAA'});
+  var r = mergeImport(s, datei);
+  gleich([r.added, r.filled, r.skipped], [0, 0, 1]);
+  gleich(r.newPhotos, {});
+  gleich(r.state.entries[0], s.entries[0]);
+});
+test('mergeImport: ergänzt nur, was fehlt (Noten da, Foto fehlt)', function(){
+  var s = toState([Object.assign({}, SOMMER, {flavors:['Floral']})]);
+  var datei = buildBackup(toState([Object.assign({}, SOMMER, {photo:'f-x', flavors:['Schoko']})]), {'f-x':'data:image/jpeg;base64,AAAA'});
+  var r = mergeImport(s, datei);
+  gleich(r.filled, 1);
+  gleich(r.state.entries[0].flavors, ['Floral']);
+  gleich(r.state.entries[0].photo, 'f-x');
+});
+test('mergeImport: zweimal dieselbe Datei ergänzt nur einmal', function(){
+  var datei = buildBackup(toState([Object.assign({}, SOMMER, {photo:'f-x', flavors:['Schoko']})]), {'f-x':'data:image/jpeg;base64,AAAA'});
+  var erst = mergeImport(toState([SOMMER]), datei);
+  var zweit = mergeImport(erst.state, datei);
+  gleich([zweit.added, zweit.filled, zweit.skipped], [0, 0, 1]);
 });
 test('mergeImport: Eintrag zeigt auf fehlendes Foto -> ohne Foto', function(){
   var r = mergeImport(emptyState(), {formatVersion:3, entries:[Object.assign({}, SOMMER, {photo:'f-weg'})], photos:{}});

@@ -552,12 +552,15 @@ $('fileImport').addEventListener('change', async function(ev){
   }
   state = result.state;
   if(!persist()) return;
-  if(result.added) changed();
+  if(result.added || result.filled) changed();
   render();
   renderCustomFlavors();
-  var there = result.skipped ? ', ' + result.skipped + ' schon vorhanden' : '';
-  if(result.added) showToast((result.added === 1 ? '1 Eintrag' : result.added + ' Einträge') + ' übernommen' + there + '.');
-  else showToast(result.skipped ? 'Keine neuen Einträge' + there + '.' : 'Die Datei enthält keine Einträge.');
+  var parts = [];
+  if(result.added) parts.push((result.added === 1 ? '1 Eintrag' : result.added + ' Einträge') + ' übernommen');
+  if(result.filled) parts.push(result.filled + ' um Foto oder Noten ergänzt');
+  if(result.skipped) parts.push(result.skipped + ' schon vorhanden');
+  if(!result.added && !result.filled) parts.unshift(result.skipped ? 'Keine neuen Einträge' : 'Die Datei enthält keine Einträge');
+  showToast(parts.join(', ') + '.');
 });
 
 var toastTimer;

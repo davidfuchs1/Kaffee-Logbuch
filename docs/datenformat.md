@@ -83,9 +83,12 @@ Floral, Würzig, Kakao, Milchschokolade.
 In `photos` stehen nur Fotos, auf die ein Eintrag zeigt. Vorschaubilder werden beim
 Wiederherstellen neu erzeugt.
 
-**Wiederherstellen führt zusammen:** Einträge, deren Name+Rösterei es schon gibt, werden
-übersprungen (auch ihr Foto). Eigene Noten werden vereinigt. Ein unlesbares Foto kostet
-nur das Bild, nicht den Eintrag.
+**Wiederherstellen führt zusammen:**
+- Neue Name+Rösterei-Kombinationen werden übernommen.
+- Vorhandene Einträge bleiben, wie sie sind. Nur was ihnen fehlt, wird aus der Datei
+  ergänzt: das Foto, wenn sie keins haben, und die Geschmacksnoten, wenn sie keine haben.
+  Vorhandene Fotos, Noten und alle anderen Werte werden nie überschrieben.
+- Eigene Noten werden vereinigt. Ein unlesbares Foto kostet nur das Bild, nicht den Eintrag.
 
 ## Ältere Formate (werden weiter gelesen)
 

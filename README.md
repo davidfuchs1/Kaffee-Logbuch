@@ -27,8 +27,9 @@ und Fotos. Leg sie außerhalb der App ab, zum Beispiel in „Dateien“ (iCloud 
 Ein goldener Punkt am Zahnrad erinnert dich, wenn sich seit der letzten Sicherung
 einiges geändert hat.
 
-**Wiederherstellen** liest die Datei wieder ein. Einträge, die es schon gibt, bleiben
-unverändert; nur fehlende kommen dazu. Auch Sicherungen der ersten App-Version lassen
+**Wiederherstellen** liest die Datei wieder ein. Fehlende Einträge kommen dazu. Bei
+Einträgen, die es schon gibt, wird nur ergänzt, was fehlt (Foto, Geschmacksnoten);
+überschrieben wird nichts. Auch Sicherungen der ersten App-Version lassen
 sich einlesen.
 
 ## Fotos
