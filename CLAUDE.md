@@ -5,6 +5,9 @@ Privates Brüh-Protokoll für Espresso/Kaffee als PWA auf GitHub Pages
 **Dieses Repository ist öffentlich** und enthält nur die App. Die Daten liegen
 ausschließlich im Gerätespeicher des Nutzers, nie im Repo.
 
+**Zuerst lesen:** `docs/ueberblick.md` – was die App macht, wie sie aussieht, wie sie
+gebaut ist und was entschieden oder verworfen wurde.
+
 ## Harte Vorgaben
 - Kein Login, kein Nutzerkonto, keine Daten auf fremden Servern. V2 ist für alle
   **nur lokal** (Entscheidung 13.10.2026). GitHub-Sync ist geprüft, aber zurückgestellt.
@@ -31,6 +34,7 @@ ausschließlich im Gerätespeicher des Nutzers, nie im Repo.
 | `service-worker.js` | Oberfläche gecacht; erst Netz, sonst Cache. Bei neuen Dateien die Liste `OBERFLAECHE` ergänzen und `VERSION` erhöhen |
 | `schriften/` | Fraunces, Inter, IBM Plex Mono (lokal, OFL) |
 | `tests/` | Tests im Browser: `tests/test.html` |
+| `docs/ueberblick.md` | Funktionen, Aussehen (Farben, Schriften, Bohne, Icon), Aufbau, Entscheidungen |
 | `docs/datenformat.md` | verbindliches Datenformat |
 
 ## Daten
