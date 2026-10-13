@@ -1,7 +1,7 @@
 // Oberfläche: Liste, Formular, Sichern/Wiederherstellen.
-import { escapeHtml, fmtRatio, fmtDecimal, fractionFor, sortEntries, findDuplicate, toV3Entry, buildBackup, mergeImport } from './daten.js';
+import { escapeHtml, fmtRatio, fmtDecimal, fractionFor, sortEntries, findDuplicate, toV3Entry, buildBackup, mergeImport, flavorChoices, addCustomFlavor } from './daten.js';
 import { loadState, saveState } from './speicher.js';
-import { beanSVG, beansRow } from './bohne.js';
+import { beanDefs, beanSVG, beansRow } from './bohne.js';
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function(){
@@ -13,7 +13,10 @@ var state = loadState().state;
 var sortMode = 'date';
 var editingId = null; // null = neuer Eintrag
 var currentRating = 0;
+var currentFlavors = [];
 var deleteArmed = false;
+
+document.body.insertAdjacentHTML('afterbegin', beanDefs());
 
 var listEl = document.getElementById('list');
 var countLbl = document.getElementById('countLbl');
@@ -34,13 +37,16 @@ function render(){
   listEl.innerHTML = sortEntries(entries, sortMode).map(function(e){
     var notesHtml = e.notes ? '<p class="card-notes">'+escapeHtml(e.notes)+'</p>' : '';
     var grindVal = e.grind!=null ? e.grind : 10;
+    var flavorsHtml = e.flavors.length ? '<div class="card-flavors">'+e.flavors.map(function(f){
+      return '<span class="flavor">'+escapeHtml(f)+'</span>';
+    }).join('')+'</div>' : '';
     return '<div class="card" data-id="'+escapeHtml(e.id)+'">'+
-      '<div class="card-top">'+
-        '<div>'+
+      '<div class="card-head">'+
+        '<div class="card-title">'+
           '<p class="card-eyebrow">'+escapeHtml(e.roastery||'Rösterei unbekannt')+'</p>'+
           '<h3 class="card-name">'+escapeHtml(e.name||'Ohne Namen')+'</h3>'+
+          '<div class="beans">'+beansRow(e.rating||0)+'</div>'+
         '</div>'+
-        '<div class="beans">'+beansRow(e.rating||0)+'</div>'+
       '</div>'+
       '<div class="card-meta">'+
         '<span class="badge ratio">'+fmtRatio(e.gramsIn,e.gramsOut)+'</span>'+
@@ -48,6 +54,7 @@ function render(){
         '<span class="badge">'+(e.brewSeconds||0)+' <span class="lbl">Sek</span></span>'+
         '<span class="badge">'+fmtDecimal(grindVal)+' <span class="lbl">Mahlgrad</span></span>'+
       '</div>'+
+      flavorsHtml+
       notesHtml+
     '</div>';
   }).join('');
@@ -92,6 +99,36 @@ function renderBeanPicker(){
   }
   ratingLbl.textContent = currentRating>0 ? (fmtDecimal(currentRating)+' / 5') : 'Noch keine Bewertung';
 }
+
+// Geschmacksnoten: Standard + eigene, Mehrfachauswahl per Antippen
+var flavorChips = document.getElementById('flavorChips');
+var flavorNew = document.getElementById('fFlavorNew');
+
+function renderFlavorChips(){
+  flavorChips.innerHTML = flavorChoices(state, currentFlavors).map(function(f){
+    var on = currentFlavors.indexOf(f) !== -1;
+    return '<button type="button" class="chip'+(on?' on':'')+'" aria-pressed="'+on+'">'+escapeHtml(f)+'</button>';
+  }).join('');
+}
+flavorChips.addEventListener('click', function(ev){
+  var chip = ev.target.closest('.chip');
+  if(!chip) return;
+  var f = chip.textContent, i = currentFlavors.indexOf(f);
+  if(i === -1) currentFlavors.push(f); else currentFlavors.splice(i, 1);
+  renderFlavorChips();
+});
+function addFlavorFromInput(){
+  var f = addCustomFlavor(state, flavorNew.value);
+  if(!f) return;
+  saveState(state);
+  if(currentFlavors.indexOf(f) === -1) currentFlavors.push(f);
+  flavorNew.value = '';
+  renderFlavorChips();
+}
+document.getElementById('btnFlavorAdd').addEventListener('click', addFlavorFromInput);
+flavorNew.addEventListener('keydown', function(ev){
+  if(ev.key === 'Enter'){ ev.preventDefault(); addFlavorFromInput(); }
+});
 
 function updateRatioLive(){
   var gIn = parseFloat(document.getElementById('fIn').value);
@@ -152,7 +189,10 @@ function openSheet(id){
   document.getElementById('grindLbl').textContent = fmtDecimal(grindVal);
   document.getElementById('fNotes').value = e ? e.notes : '';
   currentRating = e ? (e.rating||0) : 0;
+  currentFlavors = e ? e.flavors.slice() : [];
+  flavorNew.value = '';
   renderBeanPicker();
+  renderFlavorChips();
   updateRatioLive();
 
   document.getElementById('deleteRow').hidden = !e;
@@ -190,7 +230,7 @@ document.getElementById('btnSave').addEventListener('click', function(){
     grind: isNaN(grindRaw) ? 10 : Math.round(grindRaw*10)/10,
     rating: currentRating,
     notes: document.getElementById('fNotes').value.trim(),
-    flavors: old ? old.flavors : [],
+    flavors: flavorChoices(state, currentFlavors).filter(function(f){ return currentFlavors.indexOf(f) !== -1; }),
     photo: old ? old.photo : null,
     createdAt: old ? old.createdAt : Date.now(),
     updatedAt: Date.now()
