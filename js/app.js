@@ -1,6 +1,6 @@
 // Oberfläche: Liste, Formular, Sichern/Wiederherstellen.
-import { entryKey, escapeHtml, fmtRatio, fmtDecimal, fractionFor, sortEntries, mergeImport } from './daten.js';
-import { loadEntries, saveEntries } from './speicher.js';
+import { escapeHtml, fmtRatio, fmtDecimal, fractionFor, sortEntries, findDuplicate, toV3Entry, buildBackup, mergeImport } from './daten.js';
+import { loadState, saveState } from './speicher.js';
 import { beanSVG, beansRow } from './bohne.js';
 
 if ('serviceWorker' in navigator) {
@@ -9,8 +9,9 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+var state = loadState().state;
 var sortMode = 'date';
-var editingIndex = -1; // -1 = neuer Eintrag
+var editingId = null; // null = neuer Eintrag
 var currentRating = 0;
 var deleteArmed = false;
 
@@ -18,7 +19,7 @@ var listEl = document.getElementById('list');
 var countLbl = document.getElementById('countLbl');
 
 function render(){
-  var entries = loadEntries();
+  var entries = state.entries;
   countLbl.textContent = entries.length + (entries.length===1 ? ' Eintrag' : ' Einträge');
 
   if(entries.length === 0){
@@ -33,7 +34,7 @@ function render(){
   listEl.innerHTML = sortEntries(entries, sortMode).map(function(e){
     var notesHtml = e.notes ? '<p class="card-notes">'+escapeHtml(e.notes)+'</p>' : '';
     var grindVal = e.grind!=null ? e.grind : 10;
-    return '<div class="card" data-name="'+escapeHtml(e.name)+'" data-roastery="'+escapeHtml(e.roastery)+'">'+
+    return '<div class="card" data-id="'+escapeHtml(e.id)+'">'+
       '<div class="card-top">'+
         '<div>'+
           '<p class="card-eyebrow">'+escapeHtml(e.roastery||'Rösterei unbekannt')+'</p>'+
@@ -64,8 +65,7 @@ document.querySelectorAll('.sort button').forEach(function(btn){
 listEl.addEventListener('click', function(ev){
   var card = ev.target.closest('.card');
   if(!card) return;
-  var key = entryKey({name: card.dataset.name, roastery: card.dataset.roastery});
-  openSheet(key);
+  openSheet(card.dataset.id);
 });
 
 var overlay = document.getElementById('overlay');
@@ -131,11 +131,13 @@ function resetDeleteButton(){
   clearTimeout(btnDelete._revertTimer);
 }
 
-function openSheet(key){
-  var entries = loadEntries();
-  var idx = key ? entries.findIndex(function(x){ return entryKey(x) === key; }) : -1;
-  editingIndex = idx;
-  var e = idx >= 0 ? entries[idx] : null;
+function findEntry(id){
+  return state.entries.filter(function(x){ return x.id === id; })[0] || null;
+}
+
+function openSheet(id){
+  var e = id ? findEntry(id) : null;
+  editingId = e ? e.id : null;
   resetDeleteButton();
   hideDupWarning();
 
@@ -158,7 +160,7 @@ function openSheet(key){
 }
 function closeSheet(){
   overlay.classList.remove('open');
-  editingIndex = -1;
+  editingId = null;
   resetDeleteButton();
 }
 
@@ -171,18 +173,15 @@ document.getElementById('btnSave').addEventListener('click', function(){
   if(!name){ document.getElementById('fName').focus(); return; }
   var roastery = document.getElementById('fRoastery').value.trim();
 
-  var entries = loadEntries();
-  var newKey = entryKey({name:name, roastery:roastery});
-  var conflictIdx = entries.findIndex(function(x, i){
-    return entryKey(x) === newKey && i !== editingIndex;
-  });
-  if(conflictIdx !== -1){
+  if(findDuplicate(state.entries, name, roastery, editingId)){
     dupWarning.hidden = false;
     return;
   }
 
+  var old = editingId ? findEntry(editingId) : null;
   var grindRaw = parseFloat(document.getElementById('fGrind').value);
-  var data = {
+  var data = toV3Entry({
+    id: old ? old.id : null,
     name: name,
     roastery: roastery,
     gramsIn: parseFloat(document.getElementById('fIn').value) || 0,
@@ -191,21 +190,24 @@ document.getElementById('btnSave').addEventListener('click', function(){
     grind: isNaN(grindRaw) ? 10 : Math.round(grindRaw*10)/10,
     rating: currentRating,
     notes: document.getElementById('fNotes').value.trim(),
-    createdAt: editingIndex >= 0 ? entries[editingIndex].createdAt : Date.now()
-  };
+    flavors: old ? old.flavors : [],
+    photo: old ? old.photo : null,
+    createdAt: old ? old.createdAt : Date.now(),
+    updatedAt: Date.now()
+  });
 
-  if(editingIndex >= 0){
-    entries[editingIndex] = data;
+  if(old){
+    state.entries[state.entries.indexOf(old)] = data;
   } else {
-    entries.push(data);
+    state.entries.push(data);
   }
-  saveEntries(entries);
+  saveState(state);
   closeSheet();
   render();
 });
 
 btnDelete.addEventListener('click', function(){
-  if(editingIndex < 0) return;
+  if(!editingId) return;
   if(!deleteArmed){
     deleteArmed = true;
     btnDelete.textContent = 'Wirklich löschen? Nochmal tippen';
@@ -214,17 +216,15 @@ btnDelete.addEventListener('click', function(){
     btnDelete._revertTimer = setTimeout(resetDeleteButton, 3000);
     return;
   }
-  var entries = loadEntries();
-  entries.splice(editingIndex, 1);
-  saveEntries(entries);
+  state.entries = state.entries.filter(function(x){ return x.id !== editingId; });
+  saveState(state);
   closeSheet();
   render();
   showToast('Eintrag gelöscht.');
 });
 
 document.getElementById('btnExport').addEventListener('click', function(){
-  var entries = loadEntries();
-  var blob = new Blob([JSON.stringify(entries, null, 2)], {type:'application/json'});
+  var blob = new Blob([JSON.stringify(buildBackup(state, {}), null, 2)], {type:'application/json'});
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   var stamp = new Date().toISOString().slice(0,10);
@@ -246,8 +246,9 @@ document.getElementById('fileImport').addEventListener('change', function(ev){
   var reader = new FileReader();
   reader.onload = function(){
     try{
-      var result = mergeImport(loadEntries(), JSON.parse(reader.result));
-      saveEntries(result.list);
+      var result = mergeImport(state, JSON.parse(reader.result));
+      state = result.state;
+      saveState(state);
       render();
       showToast(result.added + ' Einträge übernommen.');
     }catch(err){
