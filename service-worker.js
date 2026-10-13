@@ -24,6 +24,7 @@ const OBERFLAECHE = [
   'js/speicher.js',
   'js/bohne.js',
   'js/bilder.js',
+  'js/ziehen.js',
   'manifest.json',
   'apple-touch-icon.png',
   'schriften/fraunces-latin.woff2',

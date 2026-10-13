@@ -7,6 +7,7 @@ import {
 import { loadState, saveState, loadMeta, saveMeta, photos } from './speicher.js';
 import { beanDefs, beanSVG, beansRow } from './bohne.js';
 import { photoFromFile, photoFromDataUrl, blobToDataUrl } from './bilder.js';
+import { swipeToClose } from './ziehen.js';
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function(){
@@ -317,6 +318,7 @@ function closeSheet(){
 $('btnAdd').addEventListener('click', function(){ openSheet(null); });
 $('btnCancel').addEventListener('click', closeSheet);
 overlay.addEventListener('click', function(ev){ if(ev.target === overlay) closeSheet(); });
+swipeToClose(overlay, closeSheet);
 
 $('btnSave').addEventListener('click', async function(){
   if(saving) return;
@@ -440,6 +442,7 @@ function closeSettings(){
 $('btnSettings').addEventListener('click', openSettings);
 $('btnSettingsClose').addEventListener('click', closeSettings);
 settingsOverlay.addEventListener('click', function(ev){ if(ev.target === settingsOverlay) closeSettings(); });
+swipeToClose(settingsOverlay, closeSettings);
 
 function dateStamp(){
   var d = new Date();

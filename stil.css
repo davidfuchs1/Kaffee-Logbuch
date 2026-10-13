@@ -164,7 +164,7 @@ header.top .titles p{
 .sheet{
   background:var(--bg);
   width:100%;max-width:520px;
-  max-height:92vh;overflow-y:auto;
+  max-height:92vh;overflow-y:auto;overscroll-behavior:contain;
   border-radius:22px 22px 0 0;
   border:1px solid var(--border);border-bottom:none;
   padding:20px 20px calc(24px + env(safe-area-inset-bottom));

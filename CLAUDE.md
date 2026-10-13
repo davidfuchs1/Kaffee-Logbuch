@@ -26,6 +26,7 @@ ausschließlich im Gerätespeicher des Nutzers, nie im Repo.
 | `js/speicher.js` | Gerätespeicher (localStorage für Einträge, IndexedDB für Fotos) |
 | `js/bilder.js` | Fotos verkleinern, Umwandlung für die Sicherungsdatei |
 | `js/bohne.js` | Bohnen-Symbol der Bewertung |
+| `js/ziehen.js` | Blätter nach unten wegziehen (wie in iOS) |
 | `js/app.js` | Oberfläche |
 | `service-worker.js` | Oberfläche gecacht; erst Netz, sonst Cache. Bei neuen Dateien die Liste `OBERFLAECHE` ergänzen und `VERSION` erhöhen |
 | `schriften/` | Fraunces, Inter, IBM Plex Mono (lokal, OFL) |
