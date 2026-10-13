@@ -1,25 +1,66 @@
-// Oberfläche: Liste, Formular, Sichern/Wiederherstellen.
-import { escapeHtml, fmtRatio, fmtDecimal, fractionFor, sortEntries, findDuplicate, toV3Entry, buildBackup, mergeImport, flavorChoices, addCustomFlavor } from './daten.js';
-import { loadState, saveState } from './speicher.js';
+// Oberfläche: Liste, Formular, Fotos, Sicherung.
+import {
+  escapeHtml, fmtRatio, fmtDecimal, fractionFor, sortEntries, findDuplicate, toV3Entry,
+  flavorChoices, addCustomFlavor, buildBackup, mergeImport,
+  backupStatus, backupDue, countChange, backupDone
+} from './daten.js';
+import { loadState, saveState, loadMeta, saveMeta, photos } from './speicher.js';
 import { beanDefs, beanSVG, beansRow } from './bohne.js';
+import { photoFromFile, photoFromDataUrl, blobToDataUrl } from './bilder.js';
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('service-worker.js').catch(function(){});
   });
 }
+// iOS bitten, den Gerätespeicher nicht von sich aus zu leeren (Wirkung nicht garantiert)
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist().catch(function(){});
+}
 
-var state = loadState().state;
+function $(id){ return document.getElementById(id); }
+
+var loaded = loadState();
+var state = loaded.state;
+var meta = loadMeta();
 var sortMode = 'date';
 var editingId = null; // null = neuer Eintrag
 var currentRating = 0;
 var currentFlavors = [];
 var deleteArmed = false;
+var saving = false;
 
 document.body.insertAdjacentHTML('afterbegin', beanDefs());
 
-var listEl = document.getElementById('list');
-var countLbl = document.getElementById('countLbl');
+function persist(){
+  try{ saveState(state); return true; }
+  catch(e){ showToast('Speichern nicht möglich – Gerätespeicher voll?'); return false; }
+}
+// Zählt eine Änderung für die Erinnerung an die Sicherung
+function changed(){
+  meta = countChange(meta);
+  saveMeta(meta);
+  readyFile = null;
+  updateBackupUi();
+}
+
+// ---------- Vorschaubilder ----------
+
+var thumbUrls = {}; // Foto-id -> Adresse des Vorschaubilds
+
+function setThumb(id, blob){
+  if(thumbUrls[id]) URL.revokeObjectURL(thumbUrls[id]);
+  thumbUrls[id] = URL.createObjectURL(blob);
+}
+function removePhoto(id){
+  if(thumbUrls[id]){ URL.revokeObjectURL(thumbUrls[id]); delete thumbUrls[id]; }
+  photos.remove(id).catch(function(){});
+}
+
+// ---------- Liste ----------
+
+var listEl = $('list');
+var countLbl = $('countLbl');
 
 function render(){
   var entries = state.entries;
@@ -37,11 +78,14 @@ function render(){
   listEl.innerHTML = sortEntries(entries, sortMode).map(function(e){
     var notesHtml = e.notes ? '<p class="card-notes">'+escapeHtml(e.notes)+'</p>' : '';
     var grindVal = e.grind!=null ? e.grind : 10;
+    var photoHtml = e.photo ? '<div class="card-photo">'+
+      (thumbUrls[e.photo] ? '<img src="'+thumbUrls[e.photo]+'" alt="">' : '')+'</div>' : '';
     var flavorsHtml = e.flavors.length ? '<div class="card-flavors">'+e.flavors.map(function(f){
       return '<span class="flavor">'+escapeHtml(f)+'</span>';
     }).join('')+'</div>' : '';
     return '<div class="card" data-id="'+escapeHtml(e.id)+'">'+
       '<div class="card-head">'+
+        photoHtml+
         '<div class="card-title">'+
           '<p class="card-eyebrow">'+escapeHtml(e.roastery||'Rösterei unbekannt')+'</p>'+
           '<h3 class="card-name">'+escapeHtml(e.name||'Ohne Namen')+'</h3>'+
@@ -75,11 +119,13 @@ listEl.addEventListener('click', function(ev){
   openSheet(card.dataset.id);
 });
 
-var overlay = document.getElementById('overlay');
-var beanPicker = document.getElementById('beanPicker');
-var ratingLbl = document.getElementById('ratingLbl');
-var btnDelete = document.getElementById('btnDelete');
-var dupWarning = document.getElementById('dupWarning');
+// ---------- Formular ----------
+
+var overlay = $('overlay');
+var beanPicker = $('beanPicker');
+var ratingLbl = $('ratingLbl');
+var btnDelete = $('btnDelete');
+var dupWarning = $('dupWarning');
 
 function renderBeanPicker(){
   beanPicker.innerHTML = '';
@@ -101,8 +147,8 @@ function renderBeanPicker(){
 }
 
 // Geschmacksnoten: Standard + eigene, Mehrfachauswahl per Antippen
-var flavorChips = document.getElementById('flavorChips');
-var flavorNew = document.getElementById('fFlavorNew');
+var flavorChips = $('flavorChips');
+var flavorNew = $('fFlavorNew');
 
 function renderFlavorChips(){
   flavorChips.innerHTML = flavorChoices(state, currentFlavors).map(function(f){
@@ -120,31 +166,92 @@ flavorChips.addEventListener('click', function(ev){
 function addFlavorFromInput(){
   var f = addCustomFlavor(state, flavorNew.value);
   if(!f) return;
-  saveState(state);
+  persist();
   if(currentFlavors.indexOf(f) === -1) currentFlavors.push(f);
   flavorNew.value = '';
   renderFlavorChips();
 }
-document.getElementById('btnFlavorAdd').addEventListener('click', addFlavorFromInput);
+$('btnFlavorAdd').addEventListener('click', addFlavorFromInput);
 flavorNew.addEventListener('keydown', function(ev){
   if(ev.key === 'Enter'){ ev.preventDefault(); addFlavorFromInput(); }
 });
 
-function updateRatioLive(){
-  var gIn = parseFloat(document.getElementById('fIn').value);
-  var gOut = parseFloat(document.getElementById('fOut').value);
-  document.getElementById('ratioLive').textContent = 'Verhältnis ' + fmtRatio(gIn, gOut);
-}
-document.getElementById('fIn').addEventListener('input', updateRatioLive);
-document.getElementById('fOut').addEventListener('input', updateRatioLive);
+// Foto im Formular. Gespeichert wird erst mit dem Eintrag.
+//   keep = unverändert, new = neu gewählt (liegt in formPhoto.neu), none = entfernt
+var formPhoto = {mode: 'keep', neu: null, url: null};
+var photoBox = $('photoBox');
+var photoPreview = $('photoPreview');
 
-document.getElementById('fGrind').addEventListener('input', function(){
-  document.getElementById('grindLbl').textContent = fmtDecimal(parseFloat(this.value));
+function showFormPhoto(url){
+  photoBox.classList.toggle('has', !!url);
+  photoBox.setAttribute('aria-label', url ? 'Foto groß ansehen' : 'Foto hinzufügen');
+  photoPreview.hidden = !url;
+  if(url) photoPreview.src = url; else photoPreview.removeAttribute('src');
+  $('btnPhotoRemove').hidden = !url;
+  $('btnPhotoPick').textContent = url ? 'Foto ersetzen' : 'Foto wählen';
+}
+function resetFormPhoto(e){
+  if(formPhoto.url) URL.revokeObjectURL(formPhoto.url);
+  formPhoto = {mode: 'keep', neu: null, url: null};
+  showFormPhoto(e && e.photo ? (thumbUrls[e.photo] || null) : null);
+}
+function pickPhoto(){ $('filePhoto').click(); }
+
+$('btnPhotoPick').addEventListener('click', pickPhoto);
+$('filePhoto').addEventListener('change', function(ev){
+  var file = ev.target.files[0];
+  ev.target.value = '';
+  if(!file) return;
+  photoFromFile(file).then(function(p){
+    if(formPhoto.url) URL.revokeObjectURL(formPhoto.url);
+    formPhoto = {mode: 'new', neu: p, url: URL.createObjectURL(p.klein)};
+    showFormPhoto(formPhoto.url);
+  }).catch(function(){
+    showToast('Bild konnte nicht gelesen werden.');
+  });
+});
+$('btnPhotoRemove').addEventListener('click', function(){
+  if(formPhoto.url) URL.revokeObjectURL(formPhoto.url);
+  formPhoto = {mode: 'none', neu: null, url: null};
+  showFormPhoto(null);
+});
+photoBox.addEventListener('click', function(){
+  if(!photoBox.classList.contains('has')){ pickPhoto(); return; }
+  var e = editingId ? findEntry(editingId) : null;
+  var big = formPhoto.mode === 'new' ? Promise.resolve(formPhoto.neu.bild)
+          : (e && e.photo ? photos.get(e.photo) : Promise.resolve(null));
+  big.then(function(blob){ if(blob) openViewer(blob); }).catch(function(){});
+});
+
+// Foto groß ansehen; Tippen schließt
+var photoOverlay = $('photoOverlay');
+var viewerUrl = null;
+function openViewer(blob){
+  viewerUrl = URL.createObjectURL(blob);
+  $('photoLarge').src = viewerUrl;
+  photoOverlay.classList.add('open');
+}
+photoOverlay.addEventListener('click', function(){
+  photoOverlay.classList.remove('open');
+  $('photoLarge').removeAttribute('src');
+  if(viewerUrl){ URL.revokeObjectURL(viewerUrl); viewerUrl = null; }
+});
+
+function updateRatioLive(){
+  var gIn = parseFloat($('fIn').value);
+  var gOut = parseFloat($('fOut').value);
+  $('ratioLive').textContent = 'Verhältnis ' + fmtRatio(gIn, gOut);
+}
+$('fIn').addEventListener('input', updateRatioLive);
+$('fOut').addEventListener('input', updateRatioLive);
+
+$('fGrind').addEventListener('input', function(){
+  $('grindLbl').textContent = fmtDecimal(parseFloat(this.value));
 });
 
 document.querySelectorAll('.step-btn').forEach(function(btn){
   btn.addEventListener('click', function(){
-    var target = document.getElementById(btn.dataset.target);
+    var target = $(btn.dataset.target);
     if(!target) return;
     var step = parseFloat(btn.dataset.step);
     var min = btn.dataset.min !== undefined ? parseFloat(btn.dataset.min) : -Infinity;
@@ -158,8 +265,8 @@ document.querySelectorAll('.step-btn').forEach(function(btn){
 });
 
 function hideDupWarning(){ dupWarning.hidden = true; }
-document.getElementById('fName').addEventListener('input', hideDupWarning);
-document.getElementById('fRoastery').addEventListener('input', hideDupWarning);
+$('fName').addEventListener('input', hideDupWarning);
+$('fRoastery').addEventListener('input', hideDupWarning);
 
 function resetDeleteButton(){
   deleteArmed = false;
@@ -178,70 +285,94 @@ function openSheet(id){
   resetDeleteButton();
   hideDupWarning();
 
-  document.getElementById('sheetTitle').textContent = e ? 'Kaffee bearbeiten' : 'Neuer Kaffee';
-  document.getElementById('fName').value = e ? e.name : '';
-  document.getElementById('fRoastery').value = e ? e.roastery : '';
-  document.getElementById('fIn').value = e ? e.gramsIn : 18;
-  document.getElementById('fOut').value = e ? e.gramsOut : 40;
-  document.getElementById('fSec').value = e ? e.brewSeconds : 25;
+  $('sheetTitle').textContent = e ? 'Kaffee bearbeiten' : 'Neuer Kaffee';
+  $('fName').value = e ? e.name : '';
+  $('fRoastery').value = e ? e.roastery : '';
+  $('fIn').value = e ? e.gramsIn : 18;
+  $('fOut').value = e ? e.gramsOut : 40;
+  $('fSec').value = e ? e.brewSeconds : 25;
   var grindVal = e ? (e.grind!=null ? e.grind : 10) : 10;
-  document.getElementById('fGrind').value = grindVal;
-  document.getElementById('grindLbl').textContent = fmtDecimal(grindVal);
-  document.getElementById('fNotes').value = e ? e.notes : '';
+  $('fGrind').value = grindVal;
+  $('grindLbl').textContent = fmtDecimal(grindVal);
+  $('fNotes').value = e ? e.notes : '';
   currentRating = e ? (e.rating||0) : 0;
   currentFlavors = e ? e.flavors.slice() : [];
   flavorNew.value = '';
   renderBeanPicker();
   renderFlavorChips();
+  resetFormPhoto(e);
   updateRatioLive();
 
-  document.getElementById('deleteRow').hidden = !e;
+  $('deleteRow').hidden = !e;
+  overlay.querySelector('.sheet').scrollTop = 0;
   overlay.classList.add('open');
 }
 function closeSheet(){
   overlay.classList.remove('open');
   editingId = null;
   resetDeleteButton();
+  resetFormPhoto(null);
 }
 
-document.getElementById('btnAdd').addEventListener('click', function(){ openSheet(null); });
-document.getElementById('btnCancel').addEventListener('click', closeSheet);
+$('btnAdd').addEventListener('click', function(){ openSheet(null); });
+$('btnCancel').addEventListener('click', closeSheet);
 overlay.addEventListener('click', function(ev){ if(ev.target === overlay) closeSheet(); });
 
-document.getElementById('btnSave').addEventListener('click', function(){
-  var name = document.getElementById('fName').value.trim();
-  if(!name){ document.getElementById('fName').focus(); return; }
-  var roastery = document.getElementById('fRoastery').value.trim();
+$('btnSave').addEventListener('click', async function(){
+  if(saving) return;
+  var name = $('fName').value.trim();
+  if(!name){ $('fName').focus(); return; }
+  var roastery = $('fRoastery').value.trim();
 
   if(findDuplicate(state.entries, name, roastery, editingId)){
     dupWarning.hidden = false;
+    overlay.querySelector('.sheet').scrollTop = 0;
     return;
   }
 
   var old = editingId ? findEntry(editingId) : null;
-  var grindRaw = parseFloat(document.getElementById('fGrind').value);
+  var grindRaw = parseFloat($('fGrind').value);
   var data = toV3Entry({
     id: old ? old.id : null,
     name: name,
     roastery: roastery,
-    gramsIn: parseFloat(document.getElementById('fIn').value) || 0,
-    gramsOut: parseFloat(document.getElementById('fOut').value) || 0,
-    brewSeconds: parseInt(document.getElementById('fSec').value) || 0,
+    gramsIn: parseFloat($('fIn').value) || 0,
+    gramsOut: parseFloat($('fOut').value) || 0,
+    brewSeconds: parseInt($('fSec').value) || 0,
     grind: isNaN(grindRaw) ? 10 : Math.round(grindRaw*10)/10,
     rating: currentRating,
-    notes: document.getElementById('fNotes').value.trim(),
+    notes: $('fNotes').value.trim(),
     flavors: flavorChoices(state, currentFlavors).filter(function(f){ return currentFlavors.indexOf(f) !== -1; }),
     photo: old ? old.photo : null,
     createdAt: old ? old.createdAt : Date.now(),
     updatedAt: Date.now()
   });
 
+  saving = true;
+  try{
+    if(formPhoto.mode === 'new'){
+      var photoId = 'f-' + data.id + '-' + Date.now().toString(36);
+      await photos.put(photoId, formPhoto.neu);
+      setThumb(photoId, formPhoto.neu.klein);
+      data.photo = photoId;
+    } else if(formPhoto.mode === 'none'){
+      data.photo = null;
+    }
+  }catch(err){
+    saving = false;
+    showToast('Foto konnte nicht gespeichert werden.');
+    return;
+  }
+  saving = false;
+
   if(old){
     state.entries[state.entries.indexOf(old)] = data;
   } else {
     state.entries.push(data);
   }
-  saveState(state);
+  if(!persist()) return;
+  if(old && old.photo && old.photo !== data.photo) removePhoto(old.photo);
+  changed();
   closeSheet();
   render();
 });
@@ -256,56 +387,192 @@ btnDelete.addEventListener('click', function(){
     btnDelete._revertTimer = setTimeout(resetDeleteButton, 3000);
     return;
   }
+  var old = findEntry(editingId);
   state.entries = state.entries.filter(function(x){ return x.id !== editingId; });
-  saveState(state);
+  if(!persist()) return;
+  if(old && old.photo) removePhoto(old.photo);
+  changed();
   closeSheet();
   render();
   showToast('Eintrag gelöscht.');
 });
 
-document.getElementById('btnExport').addEventListener('click', function(){
-  var blob = new Blob([JSON.stringify(buildBackup(state, {}), null, 2)], {type:'application/json'});
-  var url = URL.createObjectURL(blob);
+// ---------- Sicherung und Einstellungen ----------
+
+var settingsOverlay = $('settingsOverlay');
+var btnExport = $('btnExport');
+var readyFile = null; // erstellte Sicherung, die noch nicht übergeben ist
+var exporting = false;
+
+function updateBackupUi(){
+  $('backupDot').hidden = !backupDue(meta);
+  $('backupStatus').textContent = backupStatus(meta);
+  btnExport.textContent = readyFile ? 'Sicherung speichern' : 'Jetzt sichern';
+}
+
+function renderCustomFlavors(){
+  var list = state.customFlavors;
+  $('customFlavorEmpty').hidden = list.length > 0;
+  $('customFlavorList').innerHTML = list.map(function(f){
+    return '<button type="button" class="chip" data-flavor="'+escapeHtml(f)+'" aria-label="'+escapeHtml(f)+' entfernen">'+
+      escapeHtml(f)+'<span class="x" aria-hidden="true">×</span></button>';
+  }).join('');
+}
+// Entfernt die Note nur aus der Auswahl; an bestehenden Kaffees bleibt sie stehen
+$('customFlavorList').addEventListener('click', function(ev){
+  var chip = ev.target.closest('.chip');
+  if(!chip) return;
+  state.customFlavors = state.customFlavors.filter(function(f){ return f !== chip.dataset.flavor; });
+  persist();
+  renderCustomFlavors();
+});
+
+function openSettings(){
+  updateBackupUi();
+  renderCustomFlavors();
+  settingsOverlay.querySelector('.sheet').scrollTop = 0;
+  settingsOverlay.classList.add('open');
+}
+function closeSettings(){
+  settingsOverlay.classList.remove('open');
+  readyFile = null;
+}
+$('btnSettings').addEventListener('click', openSettings);
+$('btnSettingsClose').addEventListener('click', closeSettings);
+settingsOverlay.addEventListener('click', function(ev){ if(ev.target === settingsOverlay) closeSettings(); });
+
+function dateStamp(){
+  var d = new Date();
+  function two(n){ return (n < 10 ? '0' : '') + n; }
+  return d.getFullYear() + '-' + two(d.getMonth()+1) + '-' + two(d.getDate());
+}
+
+// Eine Datei mit allen Einträgen und den zugehörigen Fotos
+async function buildBackupFile(){
+  var images = {};
+  for(var i=0;i<state.entries.length;i++){
+    var id = state.entries[i].photo;
+    if(!id) continue;
+    var blob = await photos.get(id);
+    if(blob) images[id] = await blobToDataUrl(blob);
+  }
+  var json = JSON.stringify(buildBackup(state, images));
+  return new File([json], 'kaffee-logbuch-backup-' + dateStamp() + '.json', {type: 'application/json'});
+}
+
+function download(file){
+  var url = URL.createObjectURL(file);
   var a = document.createElement('a');
-  var stamp = new Date().toISOString().slice(0,10);
   a.href = url;
-  a.download = 'kaffee-logbuch-backup-' + stamp + '.json';
+  a.download = file.name;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('Sicherung heruntergeladen.');
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
+
+// Übergibt die Datei an den Teilen-Dialog (iOS: „In Dateien sichern“), sonst als Download.
+// Ergebnis: 'fertig', 'abgebrochen' oder 'nochmal' (iOS verlangt einen frischen Tipp).
+async function handOver(file){
+  if(navigator.canShare && navigator.canShare({files: [file]})){
+    try{
+      await navigator.share({files: [file]});
+      return 'fertig';
+    }catch(e){
+      if(e.name === 'AbortError') return 'abgebrochen';
+      if(e.name === 'NotAllowedError') return 'nochmal';
+    }
+  }
+  download(file);
+  return 'fertig';
+}
+
+btnExport.addEventListener('click', async function(){
+  if(exporting) return;
+  exporting = true;
+  try{
+    if(!readyFile){
+      btnExport.disabled = true;
+      btnExport.textContent = 'Sicherung wird erstellt …';
+      readyFile = await buildBackupFile();
+      btnExport.disabled = false;
+    }
+    var result = await handOver(readyFile);
+    if(result === 'fertig'){
+      readyFile = null;
+      meta = backupDone();
+      saveMeta(meta);
+      showToast('Sicherung erstellt.');
+    } else if(result === 'nochmal'){
+      showToast('Sicherung ist fertig. Tippe noch einmal zum Speichern.');
+    }
+  }catch(err){
+    readyFile = null;
+    showToast('Sicherung konnte nicht erstellt werden.');
+  }
+  btnExport.disabled = false;
+  exporting = false;
+  updateBackupUi();
 });
 
-document.getElementById('btnImport').addEventListener('click', function(){
-  document.getElementById('fileImport').click();
-});
-document.getElementById('fileImport').addEventListener('change', function(ev){
+function readText(file){
+  return new Promise(function(resolve, reject){
+    var r = new FileReader();
+    r.onload = function(){ resolve(r.result); };
+    r.onerror = function(){ reject(r.error); };
+    r.readAsText(file);
+  });
+}
+
+$('btnImport').addEventListener('click', function(){ $('fileImport').click(); });
+$('fileImport').addEventListener('change', async function(ev){
   var file = ev.target.files[0];
+  ev.target.value = '';
   if(!file) return;
-  var reader = new FileReader();
-  reader.onload = function(){
+  var result;
+  try{
+    result = mergeImport(state, JSON.parse(await readText(file)));
+  }catch(err){
+    showToast('Datei konnte nicht gelesen werden.');
+    return;
+  }
+  // Fotos zuerst ablegen; ein unlesbares Foto kostet nur das Bild, nicht den Eintrag
+  var ids = Object.keys(result.newPhotos);
+  for(var i=0;i<ids.length;i++){
     try{
-      var result = mergeImport(state, JSON.parse(reader.result));
-      state = result.state;
-      saveState(state);
-      render();
-      showToast(result.added + ' Einträge übernommen.');
+      var p = await photoFromDataUrl(result.newPhotos[ids[i]]);
+      await photos.put(ids[i], p);
+      setThumb(ids[i], p.klein);
     }catch(err){
-      showToast('Datei konnte nicht gelesen werden.');
+      result.state.entries.forEach(function(e){ if(e.photo === ids[i]) e.photo = null; });
     }
-    ev.target.value = '';
-  };
-  reader.readAsText(file);
+  }
+  state = result.state;
+  if(!persist()) return;
+  if(result.added) changed();
+  render();
+  renderCustomFlavors();
+  var there = result.skipped ? ', ' + result.skipped + ' schon vorhanden' : '';
+  if(result.added) showToast((result.added === 1 ? '1 Eintrag' : result.added + ' Einträge') + ' übernommen' + there + '.');
+  else showToast(result.skipped ? 'Keine neuen Einträge' + there + '.' : 'Die Datei enthält keine Einträge.');
 });
 
 var toastTimer;
 function showToast(msg){
-  var t = document.getElementById('toast');
+  var t = $('toast');
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2400);
 }
 
+// ---------- Start ----------
+
 render();
+updateBackupUi();
+if(loaded.hinweis === 'defekt') showToast('Gespeicherter Stand war unlesbar. Ältere Daten wurden geladen.');
+
+photos.thumbs().then(function(list){
+  list.forEach(function(t){ setThumb(t.id, t.klein); });
+  if(list.length) render();
+}).catch(function(){});

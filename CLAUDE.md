@@ -24,6 +24,7 @@ ausschließlich im Gerätespeicher des Nutzers, nie im Repo.
 | `stil.css` | Layout, Komponenten, Schriften |
 | `js/daten.js` | Datenmodell, Migration, Import/Export – reine Funktionen, getestet |
 | `js/speicher.js` | Gerätespeicher (localStorage für Einträge, IndexedDB für Fotos) |
+| `js/bilder.js` | Fotos verkleinern, Umwandlung für die Sicherungsdatei |
 | `js/bohne.js` | Bohnen-Symbol der Bewertung |
 | `js/app.js` | Oberfläche |
 | `service-worker.js` | Oberfläche gecacht; erst Netz, sonst Cache. Bei neuen Dateien die Liste `OBERFLAECHE` ergänzen und `VERSION` erhöhen |

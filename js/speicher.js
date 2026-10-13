@@ -48,3 +48,84 @@ export function loadMeta(storage){
 export function saveMeta(meta, storage){
   (storage || localStorage).setItem(KEY_META, JSON.stringify(meta));
 }
+
+// ---------- Fotos (IndexedDB) ----------
+// localStorage ist für Bilder zu klein. Gespeichert werden die Bytes, nicht
+// Blob-Objekte – das ist auf iOS die robustere Form. Die Vorschaubilder liegen
+// getrennt, damit die Liste nicht alle großen Fotos laden muss.
+
+function toBytes(blob){
+  if(blob.arrayBuffer) return blob.arrayBuffer();
+  return new Promise(function(resolve, reject){
+    var r = new FileReader();
+    r.onload = function(){ resolve(r.result); };
+    r.onerror = function(){ reject(r.error); };
+    r.readAsArrayBuffer(blob);
+  });
+}
+function toBlob(row){
+  return row ? new Blob([row.bytes], {type: row.typ}) : null;
+}
+
+export function photoStore(dbName){
+  var FULL = 'fotos', THUMB = 'vorschau', dbPromise = null;
+
+  function open(){
+    if(!dbPromise){
+      dbPromise = new Promise(function(resolve, reject){
+        var req = indexedDB.open(dbName, 1);
+        req.onupgradeneeded = function(){
+          req.result.createObjectStore(FULL, {keyPath: 'id'});
+          req.result.createObjectStore(THUMB, {keyPath: 'id'});
+        };
+        req.onsuccess = function(){ resolve(req.result); };
+        req.onerror = function(){ dbPromise = null; reject(req.error); };
+      });
+    }
+    return dbPromise;
+  }
+  // fn bekommt die Transaktion und liefert die Anfrage, deren Ergebnis zurückkommt
+  function run(mode, fn){
+    return open().then(function(db){
+      return new Promise(function(resolve, reject){
+        var tx = db.transaction([FULL, THUMB], mode), req = fn(tx);
+        tx.oncomplete = function(){ resolve(req ? req.result : undefined); };
+        tx.onerror = tx.onabort = function(){ reject(tx.error); };
+      });
+    });
+  }
+
+  return {
+    // photo: {bild: Blob, klein: Blob}
+    put: function(id, photo){
+      return Promise.all([toBytes(photo.bild), toBytes(photo.klein)]).then(function(b){
+        return run('readwrite', function(tx){
+          tx.objectStore(FULL).put({id: id, typ: photo.bild.type || 'image/jpeg', bytes: b[0]});
+          tx.objectStore(THUMB).put({id: id, typ: photo.klein.type || 'image/jpeg', bytes: b[1]});
+        });
+      });
+    },
+    // großes Foto oder null
+    get: function(id){
+      return run('readonly', function(tx){ return tx.objectStore(FULL).get(id); }).then(toBlob);
+    },
+    remove: function(id){
+      return run('readwrite', function(tx){
+        tx.objectStore(FULL).delete(id);
+        tx.objectStore(THUMB).delete(id);
+      });
+    },
+    // alle Vorschaubilder: [{id, klein}]
+    thumbs: function(){
+      return run('readonly', function(tx){ return tx.objectStore(THUMB).getAll(); }).then(function(rows){
+        return rows.map(function(r){ return {id: r.id, klein: toBlob(r)}; });
+      });
+    },
+    close: function(){
+      if(!dbPromise) return Promise.resolve();
+      return dbPromise.then(function(db){ db.close(); dbPromise = null; });
+    }
+  };
+}
+
+export var photos = photoStore('kaffee-logbuch');
