@@ -1,7 +1,7 @@
 import { test, gleich, wahr, wirft } from './mini.js';
 import {
   normKey, entryKey, escapeHtml, fmtRatio, fmtDecimal, fractionFor, makeId, toV3Entry, toState,
-  sortEntries, findDuplicate, cleanFlavors, flavorChoices, addCustomFlavor, isStandardFlavor,
+  sortEntries, findDuplicate, cleanFlavors, flavorChoices, matchFlavor,
   STANDARD_FLAVORS, buildBackup, mergeImport, emptyState, backupStatus, backupDue, countChange, backupDone
 } from '../js/daten.js';
 
@@ -65,7 +65,6 @@ test('toV3Entry: v3 bleibt unverändert', function(){
 test('toState: Liste v2 -> Zustand v3', function(){
   var s = toState([SOMMER, Object.assign({}, SOMMER, {name:'Winter'})]);
   gleich(s.formatVersion, 3);
-  gleich(s.customFlavors, []);
   gleich(s.entries.length, 2);
   wahr(s.entries[0].id !== s.entries[1].id);
 });
@@ -74,8 +73,8 @@ test('toState: gleiche id zweimal wird eindeutig gemacht', function(){
   gleich(s.entries[1].id, s.entries[0].id + '-2');
 });
 test('toState: Zustand v3 mit eigenen Noten', function(){
-  var s = toState({formatVersion:3, customFlavors:['Marzipan',' marzipan ',''], entries:[SOMMER, null, 'x']});
-  gleich(s.customFlavors, ['Marzipan']);
+  var s = toState({formatVersion:3, customFlavors:['Marzipan'], entries:[SOMMER, null, 'x']});
+  wahr(!('customFlavors' in s), 'früher gemerkte eigene Noten werden nicht mehr geführt');
   gleich(s.entries.length, 1);
 });
 test('toState: Unsinn wird abgelehnt', function(){
@@ -108,27 +107,31 @@ test('cleanFlavors: ohne Leere und Doppelte', function(){
   gleich(cleanFlavors([' Nuss ', 'nuss', '', null, 'Rote  Beeren']), ['Nuss', 'Rote Beeren']);
   gleich(cleanFlavors(undefined), []);
 });
-test('addCustomFlavor: merkt neue, erkennt vorhandene', function(){
-  var s = emptyState();
-  gleich(addCustomFlavor(s, '  Marzipan '), 'Marzipan');
-  gleich(addCustomFlavor(s, 'marzipan'), 'Marzipan');
-  gleich(addCustomFlavor(s, 'nuss'), 'Nuss', 'Standardnote wird nicht doppelt gemerkt');
-  gleich(addCustomFlavor(s, '   '), '');
-  gleich(s.customFlavors, ['Marzipan']);
+test('matchFlavor: vorhandene Schreibweise gewinnt, Neues bleibt wie eingegeben', function(){
+  var auswahl = flavorChoices(['Marzipan']);
+  gleich(matchFlavor('  nuss ', auswahl), 'Nuss');
+  gleich(matchFlavor('MARZIPAN', auswahl), 'Marzipan');
+  gleich(matchFlavor(' Rote   Beeren ', auswahl), 'Rote Beeren');
+  gleich(matchFlavor('   ', auswahl), '');
 });
-test('flavorChoices: Standard, eigene, dann die des Eintrags', function(){
-  var s = emptyState(); s.customFlavors = ['Marzipan'];
-  var c = flavorChoices(s, ['Tabak', 'Nuss']);
-  gleich(c.length, 12);
-  gleich(c.slice(10), ['Marzipan', 'Tabak']);
-  wahr(isStandardFlavor('kakao') && !isStandardFlavor('Marzipan'));
+test('flavorChoices: Standardnoten, dann die eigenen dieses Kaffees', function(){
+  var c = flavorChoices(['Tabak', 'Nuss', 'tabak']);
+  gleich(c.length, 11);
+  gleich(c[10], 'Tabak');
+  gleich(flavorChoices().length, 10);
+});
+test('Eigene Noten stehen nur am Kaffee: Zustand und Sicherung führen keine Liste', function(){
+  var s = toState([Object.assign({}, SOMMER, {flavors:['Tonkabohne']})]);
+  gleich(Object.keys(s).sort(), ['entries', 'formatVersion']);
+  var datei = buildBackup(s, {});
+  wahr(!('customFlavors' in datei));
+  gleich(datei.entries[0].flavors, ['Tonkabohne']);
 });
 
 // ---------- Sicherung ----------
 
 test('buildBackup + mergeImport: Hin- und Rückweg ergibt denselben Stand', function(){
   var s = toState([SOMMER, Object.assign({}, SOMMER, {name:'Winter', createdAt:SOMMER.createdAt + 1})]);
-  s.customFlavors = ['Marzipan'];
   s.entries[0].flavors = ['Floral', 'Marzipan'];
   s.entries[0].photo = 'f-a';
   var datei = JSON.parse(JSON.stringify(buildBackup(s, {'f-a':'data:image/jpeg;base64,AAAA', 'f-verwaist':'data:image/jpeg;base64,BBBB'})));
@@ -136,7 +139,6 @@ test('buildBackup + mergeImport: Hin- und Rückweg ergibt denselben Stand', func
   var r = mergeImport(emptyState(), datei);
   gleich(r.added, 2);
   gleich(r.state.entries, s.entries);
-  gleich(r.state.customFlavors, ['Marzipan']);
   gleich(r.newPhotos, {'f-a':'data:image/jpeg;base64,AAAA'});
 });
 test('mergeImport: Backup v2 (Liste) wird gelesen', function(){

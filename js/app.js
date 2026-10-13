@@ -1,7 +1,7 @@
 // Oberfläche: Liste, Formular, Fotos, Sicherung.
 import {
   escapeHtml, fmtRatio, fmtDecimal, fractionFor, sortEntries, findDuplicate, toV3Entry,
-  flavorChoices, addCustomFlavor, buildBackup, mergeImport,
+  flavorChoices, matchFlavor, buildBackup, mergeImport,
   backupStatus, backupDue, countChange, backupDone
 } from './daten.js';
 import { loadState, saveState, loadMeta, saveMeta, photos, IS_PREVIEW } from './speicher.js';
@@ -28,6 +28,7 @@ var sortMode = 'date';
 var editingId = null; // null = neuer Eintrag
 var currentRating = 0;
 var currentFlavors = [];
+var formFlavors = []; // eigene Noten, die in diesem Formular zur Auswahl stehen
 var deleteArmed = false;
 var saving = false;
 
@@ -147,12 +148,13 @@ function renderBeanPicker(){
   ratingLbl.textContent = currentRating>0 ? (fmtDecimal(currentRating)+' / 5') : 'Noch keine Bewertung';
 }
 
-// Geschmacksnoten: Standard + eigene, Mehrfachauswahl per Antippen
+// Geschmacksnoten: Standardnoten plus die eigenen dieses Kaffees, Mehrfachauswahl per Antippen.
+// Eigene Noten werden nur am Kaffee gespeichert, nicht als Liste gemerkt.
 var flavorChips = $('flavorChips');
 var flavorNew = $('fFlavorNew');
 
 function renderFlavorChips(){
-  flavorChips.innerHTML = flavorChoices(state, currentFlavors).map(function(f){
+  flavorChips.innerHTML = flavorChoices(formFlavors).map(function(f){
     var on = currentFlavors.indexOf(f) !== -1;
     return '<button type="button" class="chip'+(on?' on':'')+'" aria-pressed="'+on+'">'+escapeHtml(f)+'</button>';
   }).join('');
@@ -165,9 +167,9 @@ flavorChips.addEventListener('click', function(ev){
   renderFlavorChips();
 });
 function addFlavorFromInput(){
-  var f = addCustomFlavor(state, flavorNew.value);
+  var f = matchFlavor(flavorNew.value, flavorChoices(formFlavors));
   if(!f) return;
-  persist();
+  formFlavors.push(f);
   if(currentFlavors.indexOf(f) === -1) currentFlavors.push(f);
   flavorNew.value = '';
   renderFlavorChips();
@@ -298,6 +300,7 @@ function openSheet(id){
   $('fNotes').value = e ? e.notes : '';
   currentRating = e ? (e.rating||0) : 0;
   currentFlavors = e ? e.flavors.slice() : [];
+  formFlavors = currentFlavors.slice();
   flavorNew.value = '';
   renderBeanPicker();
   renderFlavorChips();
@@ -344,7 +347,7 @@ $('btnSave').addEventListener('click', async function(){
     grind: isNaN(grindRaw) ? 10 : Math.round(grindRaw*10)/10,
     rating: currentRating,
     notes: $('fNotes').value.trim(),
-    flavors: flavorChoices(state, currentFlavors).filter(function(f){ return currentFlavors.indexOf(f) !== -1; }),
+    flavors: flavorChoices(formFlavors).filter(function(f){ return currentFlavors.indexOf(f) !== -1; }),
     photo: old ? old.photo : null,
     createdAt: old ? old.createdAt : Date.now(),
     updatedAt: Date.now()
@@ -412,26 +415,8 @@ function updateBackupUi(){
   btnExport.textContent = readyFile ? 'Sicherung speichern' : 'Jetzt sichern';
 }
 
-function renderCustomFlavors(){
-  var list = state.customFlavors;
-  $('customFlavorEmpty').hidden = list.length > 0;
-  $('customFlavorList').innerHTML = list.map(function(f){
-    return '<button type="button" class="chip" data-flavor="'+escapeHtml(f)+'" aria-label="'+escapeHtml(f)+' entfernen">'+
-      escapeHtml(f)+'<span class="x" aria-hidden="true">×</span></button>';
-  }).join('');
-}
-// Entfernt die Note nur aus der Auswahl; an bestehenden Kaffees bleibt sie stehen
-$('customFlavorList').addEventListener('click', function(ev){
-  var chip = ev.target.closest('.chip');
-  if(!chip) return;
-  state.customFlavors = state.customFlavors.filter(function(f){ return f !== chip.dataset.flavor; });
-  persist();
-  renderCustomFlavors();
-});
-
 function openSettings(){
   updateBackupUi();
-  renderCustomFlavors();
   settingsOverlay.querySelector('.sheet').scrollTop = 0;
   settingsOverlay.classList.add('open');
 }
@@ -554,7 +539,6 @@ $('fileImport').addEventListener('change', async function(ev){
   if(!persist()) return;
   if(result.added || result.filled) changed();
   render();
-  renderCustomFlavors();
   var parts = [];
   if(result.added) parts.push((result.added === 1 ? '1 Eintrag' : result.added + ' Einträge') + ' übernommen');
   if(result.filled) parts.push(result.filled + ' um Foto oder Noten ergänzt');

@@ -9,7 +9,7 @@ Alte Speicher-Keys werden nie verändert oder gelöscht.
 
 | Ort | Inhalt |
 |---|---|
-| `localStorage` · `kaffee-logbuch-v3` | Zustand v3 (Einträge, eigene Noten) |
+| `localStorage` · `kaffee-logbuch-v3` | Zustand v3 (Einträge) |
 | `localStorage` · `kaffee-logbuch-meta` | Stand der Sicherung |
 | IndexedDB `kaffee-logbuch` · `fotos` | Foto je id, längste Kante 1280 px, JPEG |
 | IndexedDB `kaffee-logbuch` · `vorschau` | Vorschaubild je id, längste Kante 240 px |
@@ -27,7 +27,6 @@ getrennt von Safari.
 ```json
 {
   "formatVersion": 3,
-  "customFlavors": ["Marzipan"],
   "entries": [
     {
       "id": "k-msn20uto-1ubszhn",
@@ -57,11 +56,10 @@ getrennt von Safari.
 | `grind` | Mahlgrad −1 bis 20 in 0,1-Schritten, Standard 10 |
 | `rating` | 0 bis 5 in 0,5-Schritten, 0 = unbewertet |
 | `notes` | Freitext |
-| `flavors` | Geschmacksnoten als Text, ohne Doppelte |
+| `flavors` | Geschmacksnoten als Text, ohne Doppelte. Standardnoten und eigene stehen gleichberechtigt hier; eigene Noten werden nirgends sonst gemerkt. |
 | `photo` | id des Fotos in IndexedDB oder `null` |
 | `createdAt` | Millisekunden, steuert die Sortierung „Neueste“ |
 | `updatedAt` | Millisekunden der letzten Änderung (für einen späteren Abgleich zwischen Geräten) |
-| `customFlavors` | eigene Noten, die im Formular zur Auswahl stehen |
 
 Standardnoten (fest im Code): Schokolade, Nuss, Karamell, Beeren, Zitrus, Steinobst,
 Floral, Würzig, Kakao, Milchschokolade.
@@ -74,7 +72,6 @@ Floral, Würzig, Kakao, Milchschokolade.
 {
   "formatVersion": 3,
   "exportedAt": 1791921711000,
-  "customFlavors": ["Marzipan"],
   "entries": [ … ],
   "photos": { "f-k-msn20uto-1ubszhn-mv73ww6j": "data:image/jpeg;base64,…" }
 }
@@ -88,7 +85,9 @@ Wiederherstellen neu erzeugt.
 - Vorhandene Einträge bleiben, wie sie sind. Nur was ihnen fehlt, wird aus der Datei
   ergänzt: das Foto, wenn sie keins haben, und die Geschmacksnoten, wenn sie keine haben.
   Vorhandene Fotos, Noten und alle anderen Werte werden nie überschrieben.
-- Eigene Noten werden vereinigt. Ein unlesbares Foto kostet nur das Bild, nicht den Eintrag.
+- Ein unlesbares Foto kostet nur das Bild, nicht den Eintrag.
+
+Ältere Dateien können ein Feld `customFlavors` enthalten; es wird ignoriert.
 
 ## Ältere Formate (werden weiter gelesen)
 
