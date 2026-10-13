@@ -10,10 +10,12 @@
 set -eu
 
 ZIEL="${1:?Pfad zur Arbeitskopie von main fehlt}/vorschau"
+# Unter /usr/local/bin liegt auf diesem Mac ein altes git, das nicht mehr startet
+GIT="${GIT:-/usr/bin/git}"
 
 rm -rf "$ZIEL"
 mkdir -p "$ZIEL"
-git archive v2 index.html farben.css stil.css manifest.json service-worker.js \
+"$GIT" archive v2 index.html farben.css stil.css manifest.json service-worker.js \
   apple-touch-icon.png icon-512.png js schriften tests | tar -x -C "$ZIEL"
 
 # Eigener Name, damit die zwei Symbole auf dem Home-Bildschirm unterscheidbar sind
