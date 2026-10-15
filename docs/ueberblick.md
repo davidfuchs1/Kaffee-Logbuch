@@ -1,7 +1,7 @@
 # Kaffee-Logbuch – Überblick
 
 Was die App macht, wie sie aussieht, wie sie gebaut ist und was dazu entschieden
-wurde. Stand: 14.10.2026, Version 2.0.
+wurde. Stand: 15.10.2026, Version 2.0 mit Filter.
 
 Verwandte Dateien: `CLAUDE.md` (Regeln für die Arbeit am Projekt),
 `docs/datenformat.md` (verbindliches Datenformat), `README.md` (für Nutzer).
@@ -36,6 +36,23 @@ GitHub Pages und wird auf dem iPhone über „Zum Home-Bildschirm“ installiert
   Chips; dann die Notiz, auf zwei Zeilen gekürzt.
 - Tippen auf eine Karte öffnet sie zum Bearbeiten. Runder +-Knopf unten rechts für einen
   neuen Kaffee.
+
+### Filter (Knopf rechts neben „Neueste | Beste“)
+- Runder Knopf wie das Zahnrad, genau darunter, Symbol Schieberegler. Bei aktivem Filter
+  golden mit der Anzahl der Kriterien; der Zähler zeigt „n von m“.
+- Unter der Leiste stehen die aktiven Kriterien als Chips; × entfernt eins, ab zwei gibt es
+  „alle löschen“. Passt nichts: Hinweis mit „Filter zurücksetzen“.
+- Das Blatt „Filtern“ wirkt sofort, der Knopf unten zeigt die Trefferzahl. Schließen behält
+  den Filter, „Zurücksetzen“ leert ihn. Der Filter wird nicht gespeichert (wie die Sortierung).
+- Kriterien (untereinander UND):
+  - **Suche:** jedes Wort muss in Name, Rösterei, Noten oder Notiz vorkommen;
+    Groß-/Kleinschreibung und Akzente egal („wurzig“ findet „Würzig“).
+  - **Rösterei:** Mehrfachauswahl, eine davon genügt. Nur Röstereien aus den Einträgen,
+    alphabetisch, mit Anzahl.
+  - **Geschmack:** Mehrfachauswahl mit Schalter „ODER | UND“. Nur Noten, die an einem
+    Kaffee stehen, häufigste zuerst.
+  - **Bewertung:** Alle · unbewertet · unter 3 (0,5–2,5) · ab 3 · ab 4 · ab 4,5.
+  - **Eingetragen:** Immer · 30 Tage · 3 Monate (90 Tage) · 1 Jahr, nach `createdAt`.
 
 ### Formular (Blatt von unten)
 | Feld | Regel |
@@ -212,6 +229,7 @@ Inline-Skripte und keine `style="…"`-Attribute. Nutzereingaben werden nur übe
 | Getrennte Vorschau-Fassung unter `vorschau/` | zum Testen genutzt, danach entfernt. Bei Bedarf aus der Git-Historie (`tools/vorschau.sh`) zurückholen. |
 | Statusleiste `black-translucent` | ersetzt durch `default`, siehe oben |
 | Bohnen oben rechts in der Karte | jetzt unter dem Namen, damit Karten mit und ohne Foto gleich aufgebaut sind |
+| Filter: eigene Suchzeile über der Liste oder Knopf am Zahnrad | verworfen, Knopf in der Leiste neben der Sortierung (15.10.2026) |
 
 ## 7. Arbeiten am Projekt
 

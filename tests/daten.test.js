@@ -2,7 +2,9 @@ import { test, gleich, wahr, wirft } from './mini.js';
 import {
   normKey, entryKey, escapeHtml, fmtRatio, fmtDecimal, fractionFor, makeId, toV3Entry, toState,
   sortEntries, findDuplicate, cleanFlavors, flavorChoices, matchFlavor,
-  STANDARD_FLAVORS, buildBackup, mergeImport, emptyState, backupStatus, backupDue, countChange, backupDone
+  STANDARD_FLAVORS, buildBackup, mergeImport, emptyState, backupStatus, backupDue, countChange, backupDone,
+  emptyFilter, foldText, filterEntries, activeFilterCount, roasteryCounts, flavorCounts, ratingCounts,
+  pruneFilter, filterChips
 } from '../js/daten.js';
 
 // Beispiel aus der Übergabe (Format v2)
@@ -226,4 +228,76 @@ test('countChange und backupDone', function(){
   gleich(m, {lastBackupAt:5, changesSinceBackup:1, firstChangeAt:1000});
   gleich(countChange(m, 2000), {lastBackupAt:5, changesSinceBackup:2, firstChangeAt:1000});
   gleich(backupDone(3000), {lastBackupAt:3000, changesSinceBackup:0, firstChangeAt:null});
+});
+
+// ---------- Filter ----------
+
+var JETZT = 1000 * TAG;
+var LISTE = [
+  toV3Entry({name:'Ethiopia Guji', roastery:'Bonanza', rating:4, flavors:['Beeren','Floral'], notes:'saftig', createdAt:JETZT - 5*TAG}),
+  toV3Entry({name:'Kenya Kiambu', roastery:'bonanza ', rating:5, flavors:['beeren','Zitrus'], createdAt:JETZT - 60*TAG}),
+  toV3Entry({name:'Sommer', roastery:'Heilandt', rating:2.5, flavors:['Würzig'], notes:'Sehr floral/fruchtig.', createdAt:JETZT - 200*TAG}),
+  toV3Entry({name:'Hausmischung', roastery:'', rating:0, flavors:['Schokolade','Nuss'], createdAt:JETZT - 400*TAG})
+];
+function namen(liste){ return liste.map(function(e){ return e.name; }); }
+function mit(teil){ return Object.assign(emptyFilter(), teil); }
+
+test('foldText: klein, ohne Akzente und Umlaute', function(){
+  gleich(foldText('Würzig Café Straße'), 'wurzig cafe strasse');
+  gleich(foldText(null), '');
+});
+test('filterEntries: leerer Filter zeigt alles', function(){
+  gleich(namen(filterEntries(LISTE, emptyFilter(), JETZT)), namen(LISTE));
+  gleich(activeFilterCount(emptyFilter()), 0);
+});
+test('filterEntries: Suche in Name, Rösterei, Noten und Notiz, jedes Wort muss passen', function(){
+  gleich(namen(filterEntries(LISTE, mit({text:'GUJI'}), JETZT)), ['Ethiopia Guji']);
+  gleich(namen(filterEntries(LISTE, mit({text:'wurzig'}), JETZT)), ['Sommer'], 'Note ohne Umlaut');
+  gleich(namen(filterEntries(LISTE, mit({text:'floral'}), JETZT)), ['Ethiopia Guji', 'Sommer'], 'Note oder Notiz');
+  gleich(namen(filterEntries(LISTE, mit({text:' bonanza  kenya '}), JETZT)), ['Kenya Kiambu']);
+  gleich(namen(filterEntries(LISTE, mit({text:'   '}), JETZT)).length, 4, 'nur Leerzeichen');
+});
+test('filterEntries: Röstereien, eine davon genügt, Schreibweise egal', function(){
+  gleich(namen(filterEntries(LISTE, mit({roasteries:['bonanza']}), JETZT)), ['Ethiopia Guji', 'Kenya Kiambu']);
+  gleich(namen(filterEntries(LISTE, mit({roasteries:['heilandt', '']}), JETZT)), ['Sommer', 'Hausmischung']);
+});
+test('filterEntries: Geschmack ODER und UND', function(){
+  gleich(namen(filterEntries(LISTE, mit({flavors:['beeren','floral']}), JETZT)), ['Ethiopia Guji', 'Kenya Kiambu']);
+  gleich(namen(filterEntries(LISTE, mit({flavors:['beeren','floral'], flavorMode:'and'}), JETZT)), ['Ethiopia Guji']);
+});
+test('filterEntries: Bewertung', function(){
+  gleich(namen(filterEntries(LISTE, mit({rating:'none'}), JETZT)), ['Hausmischung']);
+  gleich(namen(filterEntries(LISTE, mit({rating:'lt3'}), JETZT)), ['Sommer'], 'unter 3 ohne unbewertete');
+  gleich(namen(filterEntries(LISTE, mit({rating:'4'}), JETZT)), ['Ethiopia Guji', 'Kenya Kiambu']);
+  gleich(namen(filterEntries(LISTE, mit({rating:'4.5'}), JETZT)), ['Kenya Kiambu']);
+  gleich(namen(filterEntries(LISTE, mit({rating:'quatsch'}), JETZT)).length, 4, 'unbekannt = alle');
+});
+test('filterEntries: Zeitraum nach Eintragsdatum', function(){
+  gleich(namen(filterEntries(LISTE, mit({since:30}), JETZT)), ['Ethiopia Guji']);
+  gleich(namen(filterEntries(LISTE, mit({since:90}), JETZT)), ['Ethiopia Guji', 'Kenya Kiambu']);
+  gleich(namen(filterEntries(LISTE, mit({since:365}), JETZT)).length, 3);
+});
+test('filterEntries: Kriterien zusammen, Anzahl am Knopf', function(){
+  var f = mit({text:'a', roasteries:['bonanza'], flavors:['zitrus'], rating:'4', since:90});
+  gleich(namen(filterEntries(LISTE, f, JETZT)), ['Kenya Kiambu']);
+  gleich(activeFilterCount(f), 5);
+});
+test('roasteryCounts, flavorCounts, ratingCounts', function(){
+  gleich(roasteryCounts(LISTE), [
+    {key:'bonanza', label:'Bonanza', count:2}, {key:'heilandt', label:'Heilandt', count:1},
+    {key:'', label:'ohne Rösterei', count:1}
+  ]);
+  gleich(flavorCounts(LISTE).slice(0, 3), [
+    {key:'beeren', label:'Beeren', count:2}, {key:'floral', label:'Floral', count:1}, {key:'nuss', label:'Nuss', count:1}
+  ]);
+  gleich(ratingCounts(LISTE).map(function(r){ return r.count; }), [1, 1, 2, 2, 1]);
+});
+test('pruneFilter und filterChips', function(){
+  var f = pruneFilter(mit({roasteries:['bonanza','weg'], flavors:['beeren','weg']}), LISTE);
+  gleich(f.roasteries, ['bonanza']);
+  gleich(f.flavors, ['beeren']);
+  gleich(filterChips(mit({text:' guji ', roasteries:['bonanza',''], flavors:['beeren','floral'], flavorMode:'and', rating:'lt3', since:30}), LISTE), [
+    {group:'text', label:'„guji“'}, {group:'roasteries', label:'Bonanza, ohne Rösterei'},
+    {group:'flavors', label:'Beeren + Floral'}, {group:'rating', label:'unter 3'}, {group:'since', label:'letzte 30 Tage'}
+  ]);
 });

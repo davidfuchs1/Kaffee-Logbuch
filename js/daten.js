@@ -239,3 +239,134 @@ export function backupDue(meta, now){
   var since = meta.lastBackupAt || meta.firstChangeAt || 0;
   return since > 0 && daysSince(since, now) >= 14;
 }
+
+// ---------- Filter ----------
+// Gilt nur für die Anzeige der Liste und wird nicht gespeichert.
+//   text        Suchwörter; jedes muss in Name, Rösterei, Noten oder Notiz vorkommen
+//   roasteries  normKey der Röstereien ('' = ohne Rösterei); eine davon genügt
+//   flavors     Noten, klein geschrieben; flavorMode 'or' = eine davon, 'and' = alle
+//   rating      '' = alle, sonst ein Schlüssel aus RATING_STEPS
+//   since       Tage seit dem Eintragen, 0 = immer
+
+export var RATING_STEPS = [
+  {key: 'none', label: 'unbewertet', test: function(r){ return r === 0; }},
+  {key: 'lt3',  label: 'unter 3',    test: function(r){ return r > 0 && r < 3; }},
+  {key: '3',    label: 'ab 3',       test: function(r){ return r >= 3; }},
+  {key: '4',    label: 'ab 4',       test: function(r){ return r >= 4; }},
+  {key: '4.5',  label: 'ab 4,5',     test: function(r){ return r >= 4.5; }}
+];
+export var SINCE_STEPS = [
+  {days: 0,   label: 'Immer',    chip: ''},
+  {days: 30,  label: '30 Tage',  chip: 'letzte 30 Tage'},
+  {days: 90,  label: '3 Monate', chip: 'letzte 3 Monate'},
+  {days: 365, label: '1 Jahr',   chip: 'letztes Jahr'}
+];
+
+export function emptyFilter(){
+  return {text: '', roasteries: [], flavors: [], flavorMode: 'or', rating: '', since: 0};
+}
+
+// Klein, ohne Akzente und Umlaut-Punkte: „Würzig“ -> „wurzig“, „Straße“ -> „strasse“
+export function foldText(s){
+  return (s||'').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss').toLowerCase();
+}
+function searchWords(text){
+  return foldText(text).split(/\s+/).filter(Boolean);
+}
+function ratingStep(key){
+  return RATING_STEPS.filter(function(s){ return s.key === key; })[0] || null;
+}
+function sinceStep(days){
+  return SINCE_STEPS.filter(function(s){ return s.days === days; })[0] || null;
+}
+
+export function filterEntries(entries, f, now){
+  var words = searchWords(f.text);
+  var step = ratingStep(f.rating);
+  var from = f.since ? (now || Date.now()) - f.since * 86400000 : 0;
+  return entries.filter(function(e){
+    if(words.length){
+      var hay = foldText([e.name, e.roastery, e.notes].concat(e.flavors).join(' '));
+      for(var i=0;i<words.length;i++) if(hay.indexOf(words[i]) === -1) return false;
+    }
+    if(f.roasteries.length && f.roasteries.indexOf(normKey(e.roastery)) === -1) return false;
+    if(f.flavors.length){
+      var own = e.flavors.map(function(x){ return x.toLowerCase(); });
+      var has = function(x){ return own.indexOf(x) !== -1; };
+      if(f.flavorMode === 'and' ? !f.flavors.every(has) : !f.flavors.some(has)) return false;
+    }
+    if(step && !step.test(e.rating || 0)) return false;
+    if(from && (e.createdAt || 0) < from) return false;
+    return true;
+  });
+}
+
+// Anzahl der aktiven Kriterien (für die Zahl am Filterknopf)
+export function activeFilterCount(f){
+  return (searchWords(f.text).length ? 1 : 0) + (f.roasteries.length ? 1 : 0) +
+    (f.flavors.length ? 1 : 0) + (ratingStep(f.rating) ? 1 : 0) + (sinceStep(f.since) && f.since ? 1 : 0);
+}
+
+// Auswahl für das Filter-Blatt: [{key, label, count}], erste Schreibweise gewinnt
+function countBy(entries, keysOf){
+  var at = {}, out = [];
+  entries.forEach(function(e){
+    keysOf(e).forEach(function(p){
+      if(!(p.key in at)) at[p.key] = out.push({key: p.key, label: p.label, count: 0}) - 1;
+      out[at[p.key]].count++;
+    });
+  });
+  return out;
+}
+// Röstereien alphabetisch, „ohne Rösterei“ zuletzt
+export function roasteryCounts(entries){
+  return countBy(entries, function(e){
+    var k = normKey(e.roastery);
+    return [{key: k, label: k ? e.roastery.trim().replace(/\s+/g, ' ') : 'ohne Rösterei'}];
+  }).sort(function(a, b){
+    if(!a.key || !b.key) return a.key ? -1 : 1;
+    return a.label.localeCompare(b.label, 'de');
+  });
+}
+// Noten, die an mindestens einem Kaffee stehen: häufigste zuerst, dann alphabetisch
+export function flavorCounts(entries){
+  return countBy(entries, function(e){
+    return e.flavors.map(function(x){ return {key: x.toLowerCase(), label: x}; });
+  }).sort(function(a, b){
+    return (b.count - a.count) || a.label.localeCompare(b.label, 'de');
+  });
+}
+export function ratingCounts(entries){
+  return RATING_STEPS.map(function(s){
+    return {key: s.key, label: s.label, count: entries.filter(function(e){ return s.test(e.rating || 0); }).length};
+  });
+}
+
+// Entfernt gewählte Röstereien und Noten, die es in den Einträgen nicht mehr gibt
+export function pruneFilter(f, entries){
+  var r = roasteryCounts(entries).map(function(x){ return x.key; });
+  var n = flavorCounts(entries).map(function(x){ return x.key; });
+  return Object.assign({}, f, {
+    roasteries: f.roasteries.filter(function(k){ return r.indexOf(k) !== -1; }),
+    flavors: f.flavors.filter(function(k){ return n.indexOf(k) !== -1; })
+  });
+}
+
+// Aktive Kriterien als Chips über der Liste: [{group, label}]
+export function filterChips(f, entries){
+  var out = [];
+  function labels(list, keys){
+    return keys.map(function(k){
+      var hit = list.filter(function(x){ return x.key === k; })[0];
+      return hit ? hit.label : k;
+    });
+  }
+  if(searchWords(f.text).length) out.push({group: 'text', label: '„' + f.text.trim() + '“'});
+  if(f.roasteries.length) out.push({group: 'roasteries', label: labels(roasteryCounts(entries), f.roasteries).join(', ')});
+  if(f.flavors.length) out.push({group: 'flavors', label: labels(flavorCounts(entries), f.flavors).join(f.flavorMode === 'and' ? ' + ' : ', ')});
+  var step = ratingStep(f.rating);
+  if(step) out.push({group: 'rating', label: step.label});
+  var since = sinceStep(f.since);
+  if(since && f.since) out.push({group: 'since', label: since.chip});
+  return out;
+}

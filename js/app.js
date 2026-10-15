@@ -2,7 +2,9 @@
 import {
   escapeHtml, fmtRatio, fmtDecimal, fractionFor, sortEntries, findDuplicate, toV3Entry,
   flavorChoices, matchFlavor, buildBackup, mergeImport,
-  backupStatus, backupDue, countChange, backupDone
+  backupStatus, backupDue, countChange, backupDone,
+  emptyFilter, filterEntries, activeFilterCount, roasteryCounts, flavorCounts, ratingCounts,
+  pruneFilter, filterChips, SINCE_STEPS
 } from './daten.js';
 import { loadState, saveState, loadMeta, saveMeta, photos } from './speicher.js';
 import { beanDefs, beanSVG, beansRow } from './bohne.js';
@@ -25,6 +27,7 @@ var loaded = loadState();
 var state = loaded.state;
 var meta = loadMeta();
 var sortMode = 'date';
+var filter = emptyFilter(); // nur für diese Sitzung, wird nicht gespeichert
 var editingId = null; // null = neuer Eintrag
 var currentRating = 0;
 var currentFlavors = [];
@@ -65,14 +68,26 @@ var listEl = $('list');
 var countLbl = $('countLbl');
 
 function render(){
-  var entries = state.entries;
-  countLbl.textContent = entries.length + (entries.length===1 ? ' Eintrag' : ' Einträge');
+  var all = state.entries;
+  filter = pruneFilter(filter, all);
+  var entries = filterEntries(all, filter);
+  var active = activeFilterCount(filter);
+  countLbl.textContent = active ? entries.length + ' von ' + all.length
+    : all.length + (all.length===1 ? ' Eintrag' : ' Einträge');
+  renderFilterUi(active);
 
-  if(entries.length === 0){
+  if(all.length === 0){
     listEl.innerHTML = '<div class="empty">'+
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 8h13a3 3 0 010 6h-1"/><path d="M4 8v7a3 3 0 003 3h6a3 3 0 003-3V8"/><path d="M8 2c0 1-1 1-1 2s1 1 1 2"/><path d="M12 2c0 1-1 1-1 2s1 1 1 2"/></svg>'+
       '<p>Noch kein Kaffee protokolliert.</p>'+
       '<div class="sub">Tippe unten rechts auf + für den ersten Eintrag.</div>'+
+    '</div>';
+    return;
+  }
+  if(entries.length === 0){
+    listEl.innerHTML = '<div class="empty">'+
+      '<p>Kein Kaffee passt zu diesen Filtern.</p>'+
+      '<button type="button" class="btn-small" data-filter-reset>Filter zurücksetzen</button>'+
     '</div>';
     return;
   }
@@ -116,9 +131,131 @@ document.querySelectorAll('.sort button').forEach(function(btn){
 });
 
 listEl.addEventListener('click', function(ev){
+  if(ev.target.closest('[data-filter-reset]')){ resetFilter(); return; }
   var card = ev.target.closest('.card');
   if(!card) return;
   openSheet(card.dataset.id);
+});
+
+// ---------- Filter ----------
+// Jede Auswahl im Blatt wirkt sofort; die Liste dahinter zeigt das Ergebnis schon an.
+// Schließen behält den Filter, „Zurücksetzen“ leert ihn.
+
+var filterOverlay = $('filterOverlay');
+var btnFilter = $('btnFilter');
+var fSearch = $('fSearch');
+var activeFiltersEl = $('activeFilters');
+var CLEAR_GROUP = {
+  text: {text: ''}, roasteries: {roasteries: []}, flavors: {flavors: []}, rating: {rating: ''}, since: {since: 0}
+};
+
+function setFilter(patch){
+  filter = Object.assign({}, filter, patch);
+  render();
+}
+function resetFilter(){
+  filter = emptyFilter();
+  fSearch.value = '';
+  render();
+}
+function toggleKey(list, key){
+  return list.indexOf(key) === -1 ? list.concat([key]) : list.filter(function(k){ return k !== key; });
+}
+
+function chipHtml(item, on, attr){
+  return '<button type="button" class="chip'+(on?' on':'')+'" aria-pressed="'+on+'" '+attr+'="'+escapeHtml(item.key)+'">'+
+    escapeHtml(item.label)+'<span class="anzahl">'+item.count+'</span></button>';
+}
+
+// Knopf mit Anzahl und die Zeile mit den aktiven Kriterien über der Liste
+function renderFilterUi(active){
+  btnFilter.hidden = state.entries.length === 0 && !active;
+  btnFilter.classList.toggle('on', active > 0);
+  btnFilter.setAttribute('aria-label', active ? 'Filtern, ' + active + ' aktiv' : 'Filtern');
+  $('filterCount').hidden = !active;
+  $('filterCount').textContent = active;
+  var chips = filterChips(filter, state.entries);
+  activeFiltersEl.hidden = !chips.length;
+  activeFiltersEl.innerHTML = chips.map(function(c){
+    return '<button type="button" class="af-chip" data-group="'+c.group+'" aria-label="'+escapeHtml(c.label)+' entfernen">'+
+      '<span>'+escapeHtml(c.label)+'</span><span class="x" aria-hidden="true">×</span></button>';
+  }).join('') + (chips.length > 1 ? '<button type="button" class="af-loeschen" data-filter-reset>alle löschen</button>' : '');
+  if(filterOverlay.classList.contains('open')) renderFilterSheet();
+}
+
+function renderFilterSheet(){
+  var all = state.entries;
+  var r = roasteryCounts(all), n = flavorCounts(all);
+  $('filterRoasteries').innerHTML = r.length ? r.map(function(x){
+    return chipHtml(x, filter.roasteries.indexOf(x.key) !== -1, 'data-roastery');
+  }).join('') : '<p class="leer">Noch keine Einträge.</p>';
+  $('filterFlavors').innerHTML = n.length ? n.map(function(x){
+    return chipHtml(x, filter.flavors.indexOf(x.key) !== -1, 'data-flavor');
+  }).join('') : '<p class="leer">Noch keine Noten eingetragen.</p>';
+  $('filterRating').innerHTML = [{key: '', label: 'Alle', count: all.length}].concat(ratingCounts(all)).map(function(x){
+    return chipHtml(x, filter.rating === x.key, 'data-rating');
+  }).join('');
+  $('flavorMode').querySelectorAll('button').forEach(function(b){
+    b.classList.toggle('active', b.dataset.mode === filter.flavorMode);
+    b.setAttribute('aria-pressed', b.dataset.mode === filter.flavorMode);
+  });
+  $('filterSince').innerHTML = SINCE_STEPS.map(function(s){
+    var on = filter.since === s.days;
+    return '<button type="button" data-since="'+s.days+'" aria-pressed="'+on+'"'+(on?' class="active"':'')+'>'+s.label+'</button>';
+  }).join('');
+  var hits = filterEntries(all, filter).length;
+  $('btnFilterShow').textContent = hits === 0 ? 'Kein Kaffee passt'
+    : (hits === 1 ? '1 Kaffee anzeigen' : hits + ' Kaffees anzeigen');
+}
+
+function openFilter(){
+  fSearch.value = filter.text;
+  renderFilterSheet();
+  filterOverlay.querySelector('.sheet').scrollTop = 0;
+  filterOverlay.classList.add('open');
+}
+function closeFilter(){
+  fSearch.blur();
+  filterOverlay.classList.remove('open');
+}
+
+btnFilter.addEventListener('click', openFilter);
+$('btnFilterShow').addEventListener('click', closeFilter);
+$('btnFilterReset').addEventListener('click', resetFilter);
+filterOverlay.addEventListener('click', function(ev){ if(ev.target === filterOverlay) closeFilter(); });
+swipeToClose(filterOverlay, closeFilter);
+
+fSearch.addEventListener('input', function(){ setFilter({text: fSearch.value}); });
+fSearch.addEventListener('keydown', function(ev){
+  if(ev.key === 'Enter'){ ev.preventDefault(); fSearch.blur(); }
+});
+$('filterRoasteries').addEventListener('click', function(ev){
+  var chip = ev.target.closest('[data-roastery]');
+  if(chip) setFilter({roasteries: toggleKey(filter.roasteries, chip.dataset.roastery)});
+});
+$('filterFlavors').addEventListener('click', function(ev){
+  var chip = ev.target.closest('[data-flavor]');
+  if(chip) setFilter({flavors: toggleKey(filter.flavors, chip.dataset.flavor)});
+});
+$('flavorMode').addEventListener('click', function(ev){
+  var b = ev.target.closest('[data-mode]');
+  if(b) setFilter({flavorMode: b.dataset.mode});
+});
+// Nochmal tippen auf die aktive Stufe = Alle
+$('filterRating').addEventListener('click', function(ev){
+  var chip = ev.target.closest('[data-rating]');
+  if(chip) setFilter({rating: filter.rating === chip.dataset.rating ? '' : chip.dataset.rating});
+});
+$('filterSince').addEventListener('click', function(ev){
+  var b = ev.target.closest('[data-since]');
+  if(b) setFilter({since: Number(b.dataset.since)});
+});
+activeFiltersEl.addEventListener('click', function(ev){
+  if(ev.target.closest('[data-filter-reset]')){ resetFilter(); return; }
+  var chip = ev.target.closest('[data-group]');
+  if(!chip) return;
+  if(chip.dataset.group === 'text') fSearch.value = '';
+  setFilter(CLEAR_GROUP[chip.dataset.group]);
 });
 
 // ---------- Formular ----------

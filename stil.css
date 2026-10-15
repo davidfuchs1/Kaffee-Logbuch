@@ -103,6 +103,31 @@ header.top .titles p{
   min-height:38px;padding:0 14px;border-radius:999px;cursor:pointer;
 }
 .sort button.active{background:var(--gold-soft);color:var(--gold);}
+.toolbar-rechts{display:flex;align-items:center;gap:8px;}
+
+/* Filterknopf: wie das Zahnrad, aktiv in Gold mit der Anzahl der Kriterien */
+.icon-btn.on{background:var(--gold-soft);border-color:var(--gold-dim);color:var(--gold);}
+.icon-btn .zahl{
+  position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 4px;
+  border-radius:999px;border:2px solid var(--bg);
+  background:var(--gold);color:var(--bg);
+  font-family:var(--font-body);font-size:11px;font-weight:600;line-height:14px;text-align:center;
+}
+
+/* Aktive Kriterien über der Liste; × entfernt eins */
+.aktive-filter{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:0 18px 14px;}
+.af-chip{
+  display:flex;align-items:center;gap:6px;max-width:100%;
+  min-height:36px;padding:0 10px 0 12px;border-radius:999px;cursor:pointer;
+  background:transparent;border:1px solid var(--gold-dim);color:var(--gold);
+  font-family:var(--font-body);font-size:12px;
+}
+.af-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.af-chip .x{color:var(--text-muted);font-size:14px;line-height:1;}
+.af-loeschen{
+  border:none;background:none;cursor:pointer;min-height:36px;padding:0 6px;
+  color:var(--text-muted);font-family:var(--font-body);font-size:12px;text-decoration:underline;
+}
 
 .list{padding:0 18px;display:flex;flex-direction:column;gap:12px;}
 
@@ -162,6 +187,7 @@ header.top .titles p{
 .empty svg{width:44px;height:44px;margin-bottom:14px;opacity:.5;color:var(--line-muted);}
 .empty p{font-size:14px;margin:0 0 4px;}
 .empty .sub{font-size:12px;color:var(--text-muted);opacity:.8;}
+.empty .btn-small{margin-top:14px;}
 
 .fab{
   position:fixed;right:22px;
@@ -277,6 +303,40 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
   font-family:var(--font-body);font-size:14px;
 }
 .chip.on{background:var(--gold-soft);border-color:var(--gold-dim);color:var(--gold);}
+.chip .anzahl{font-family:var(--font-mono);font-size:12px;color:var(--text-muted);margin-left:6px;}
+.chip.on .anzahl{color:var(--gold);}
+.chips .leer{font-size:13px;color:var(--text-muted);margin:0;}
+
+/* Filter-Blatt */
+.sheet-kopf{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:18px;}
+.sheet-kopf h2{margin:0;}
+.link-btn{
+  border:none;background:none;cursor:pointer;min-height:40px;padding:0 2px;
+  color:var(--gold);font-family:var(--font-body);font-size:14px;font-weight:500;
+}
+.suche{position:relative;}
+.suche svg{position:absolute;left:12px;top:50%;width:18px;height:18px;margin-top:-9px;color:var(--text-muted);pointer-events:none;}
+.field .suche input{
+  width:100%;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:11px 12px 11px 38px;color:var(--text);
+  font-family:var(--font-body);font-size:16px;-webkit-appearance:none;appearance:none;
+}
+.label-zeile{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;}
+.label-zeile label{margin:0;}
+/* kleiner Schalter ODER | UND, Tippfläche 40 px */
+.schalter{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:3px;}
+.schalter button{
+  border:none;background:transparent;cursor:pointer;min-height:32px;padding:0 12px;border-radius:999px;
+  color:var(--text-muted);font-family:var(--font-body);font-size:11px;font-weight:600;letter-spacing:.06em;
+}
+.schalter button.active{background:var(--gold-soft);color:var(--gold);}
+/* Zeitraum: wie die Sortier-Pille, über die volle Breite */
+.segment{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:3px;}
+.segment button{
+  flex:1;border:none;background:transparent;cursor:pointer;min-height:38px;padding:0 4px;border-radius:999px;
+  color:var(--text-muted);font-family:var(--font-body);font-size:13px;font-weight:500;
+}
+.segment button.active{background:var(--gold-soft);color:var(--gold);}
 .flavor-new{display:flex;gap:8px;margin-top:10px;}
 .flavor-new input{flex:1;min-width:0;}
 .flavor-new button{

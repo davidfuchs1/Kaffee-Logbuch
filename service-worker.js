@@ -3,7 +3,7 @@
    Erst Netz mit kurzer Wartezeit, sonst Cache. So kommt eine neue Version beim
    nächsten Öffnen an, und ohne oder mit schlechtem Empfang startet die App
    trotzdem sofort. Daten liegen nie im Cache, sondern im Gerätespeicher. */
-const VERSION = 'v3.0';
+const VERSION = 'v3.1';
 
 // Alle Seiten unter davidfuchs1.github.io teilen sich im Browser einen
 // Cache-Bereich. Deshalb trägt der Cache-Name den eigenen Pfad, und gelöscht
