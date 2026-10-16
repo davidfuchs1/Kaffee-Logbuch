@@ -105,7 +105,7 @@ header.top .titles p{
 .sort button.active{background:var(--gold-soft);color:var(--gold);}
 .toolbar-rechts{display:flex;align-items:center;gap:8px;}
 
-/* Filterknopf: wie das Zahnrad, aktiv in Gold mit der Anzahl der Kriterien */
+/* Filterknopf: wie der Sicherungs-Knopf, aktiv in Gold mit der Anzahl der Kriterien */
 .icon-btn.on{background:var(--gold-soft);border-color:var(--gold-dim);color:var(--gold);}
 .icon-btn .zahl{
   position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 4px;

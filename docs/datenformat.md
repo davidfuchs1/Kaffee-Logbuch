@@ -108,5 +108,5 @@ Mahlgrad = 10, `id` wird neu berechnet, `flavors = []`, `photo = null`,
 ```
 
 Als Änderung zählen Speichern, Löschen und ein Import mit neuen Einträgen. Der Punkt
-am Zahnrad erscheint ab 3 ungesicherten Änderungen oder wenn eine Änderung seit
+am Sicherungs-Knopf erscheint ab 3 ungesicherten Änderungen oder wenn eine Änderung seit
 14 Tagen ungesichert ist.

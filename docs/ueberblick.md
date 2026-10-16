@@ -38,7 +38,7 @@ GitHub Pages und wird auf dem iPhone über „Zum Home-Bildschirm“ installiert
   neuen Kaffee.
 
 ### Filter (Knopf rechts neben „Neueste | Beste“)
-- Runder Knopf wie das Zahnrad, genau darunter, Symbol Schieberegler. Bei aktivem Filter
+- Runder Knopf wie der Sicherungs-Knopf, genau darunter, Symbol Schieberegler. Bei aktivem Filter
   golden mit der Anzahl der Kriterien; der Zähler zeigt „n von m“.
 - Unter der Leiste stehen die aktiven Kriterien als Chips; × entfernt eins, ab zwei gibt es
   „alle löschen“. Passt nichts: Hinweis mit „Filter zurücksetzen“.
@@ -91,7 +91,7 @@ GitHub Pages und wird auf dem iPhone über „Zum Home-Bildschirm“ installiert
 - Das Foto wird erst mit „Speichern“ übernommen. Beim Löschen eines Kaffees verschwindet
   auch sein Foto.
 
-### Sicherung (Zahnrad oben rechts)
+### Sicherung (Knopf oben rechts, Symbol Ablage mit Pfeil)
 - **Jetzt sichern:** eine Datei `kaffee-logbuch-backup-JJJJ-MM-TT.json` mit allen
   Einträgen und Fotos. Übergabe an den iOS-Teilen-Dialog („In Dateien sichern“), sonst
   als Download.
@@ -99,7 +99,7 @@ GitHub Pages und wird auf dem iPhone über „Zum Home-Bildschirm“ installiert
   nur ergänzt, was fehlt (Foto, wenn keins da ist; Noten, wenn keine da sind).
   Überschrieben wird nie etwas. Liest auch Backups der ersten App-Version.
 - **Erinnerung:** Statuszeile „Letzte Sicherung vor n Tagen · m ungesicherte
-  Änderungen“. Ein goldener Punkt am Zahnrad erscheint ab 3 ungesicherten Änderungen
+  Änderungen“. Ein goldener Punkt am Sicherungs-Knopf erscheint ab 3 ungesicherten Änderungen
   oder wenn eine Änderung seit 14 Tagen ungesichert ist.
 
 ### Ohne Netz
@@ -135,7 +135,7 @@ Der Nebentext wurde bewusst aufgehellt (früher `#7C6A5E`, Kontrast 2,9–3,5). 
 
 ### Maße
 - Inhalt höchstens 520 px breit, 18 px Rand. Karten-Radius 16 px, Felder 10 px.
-- Tippflächen mindestens 40–44 px (Zahnrad 44, −/+ 40, Sortierung 38 plus Rahmen,
+- Tippflächen mindestens 40–44 px (Sicherung und Filter 44, −/+ 40, Sortierung 38 plus Rahmen,
   Bohne in der Auswahl 44).
 - Textfelder 16 px – darunter zoomt iOS beim Antippen. Kleinste Schrift 11 px.
 
@@ -230,6 +230,7 @@ Inline-Skripte und keine `style="…"`-Attribute. Nutzereingaben werden nur übe
 | Statusleiste `black-translucent` | ersetzt durch `default`, siehe oben |
 | Bohnen oben rechts in der Karte | jetzt unter dem Namen, damit Karten mit und ohne Foto gleich aufgebaut sind |
 | Filter: eigene Suchzeile über der Liste oder Knopf am Zahnrad | verworfen, Knopf in der Leiste neben der Sortierung (15.10.2026) |
+| Symbol der Sicherung: Zahnrad | ersetzt durch Ablage mit Pfeil nach unten (16.10.2026). Ebenfalls gezeigt und verworfen: Diskette, Archivbox, Schild mit Haken, Uhr mit Rückwärtspfeil |
 
 ## 7. Arbeiten am Projekt
 

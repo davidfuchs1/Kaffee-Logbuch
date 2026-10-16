@@ -21,10 +21,10 @@ gibt es die Sicherung.
 
 ## Sichern und wiederherstellen
 
-Zahnrad oben rechts → **Jetzt sichern**. Es entsteht eine Datei mit allen Einträgen
+Sicherungs-Knopf oben rechts (Ablage mit Pfeil) → **Jetzt sichern**. Es entsteht eine Datei mit allen Einträgen
 und Fotos. Leg sie außerhalb der App ab, zum Beispiel in „Dateien“ (iCloud Drive).
 
-Ein goldener Punkt am Zahnrad erinnert dich, wenn sich seit der letzten Sicherung
+Ein goldener Punkt an diesem Knopf erinnert dich, wenn sich seit der letzten Sicherung
 einiges geändert hat.
 
 **Wiederherstellen** liest die Datei wieder ein. Fehlende Einträge kommen dazu. Bei

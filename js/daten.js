@@ -231,7 +231,7 @@ export function backupDone(now){
   return {lastBackupAt: now || Date.now(), changesSinceBackup: 0, firstChangeAt: null};
 }
 
-// Punkt am Zahnrad: ab 3 ungesicherten Änderungen, oder wenn eine Änderung länger als 14 Tage liegt
+// Punkt am Sicherungs-Knopf: ab 3 ungesicherten Änderungen, oder wenn eine Änderung länger als 14 Tage liegt
 export function backupDue(meta, now){
   var changes = meta.changesSinceBackup || 0;
   if(changes >= 3) return true;

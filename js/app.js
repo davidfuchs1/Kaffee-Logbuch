@@ -539,7 +539,7 @@ btnDelete.addEventListener('click', function(){
   showToast('Eintrag gelöscht.');
 });
 
-// ---------- Sicherung und Einstellungen ----------
+// ---------- Sicherung ----------
 
 var settingsOverlay = $('settingsOverlay');
 var btnExport = $('btnExport');
